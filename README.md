@@ -41,7 +41,7 @@ ou, se usar yarn
 yarn run dev
 ```
 
-4. Abra o navegador em [http://localhost:3000](http://localhost:3000) para ver a aplicação rodando localmente.
+4. Abra o navegador em [http://localhost:5173](http://localhost:5173) para ver a aplicação rodando localmente.
 
 ⚠️ **Certifique‑se de que o backend esteja rodando e acessível** — o frontend depende das rotas da API para funcionar corretamente.
 
