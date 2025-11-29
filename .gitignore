@@ -1,3 +1,24 @@
+# ============================
+# FRONTEND - Vite / React / TypeScript / Tailwind
+# ============================
+
+# dependencies
+node_modules/
+
+# build output
+dist
+dist/
+dist-ssr
+
+# Vite cache
+.vite/
+
+# Tailwind JIT cache
+.tailwind/
+
+# Typescript cache
+*.tsbuildinfo
+
 # Logs
 logs
 *.log
@@ -7,18 +28,42 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Environment files
+.env.dev
+.env.local
+.env.prod
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Editor directories and files
+# ============================
+# IDEs / Editors / OS
+# ============================
+
+# VS Code
 .vscode/*
 !.vscode/extensions.json
-.idea
+
+# JetBrains
+.idea/*
+
+# macOS
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# Linux
+*~
+
+# Backups / swap files
+*.bak
+*.swp
+*.swo
+*.tmp
+
+# Docker e banco de dados
+postgres_data/
+*.pid
+
