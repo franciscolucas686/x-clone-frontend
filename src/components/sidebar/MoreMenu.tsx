@@ -1,5 +1,4 @@
 import {
-  Bookmark,
   CreditCard,
   DollarSign,
   Globe,
@@ -15,7 +14,7 @@ type MoreMenuProps = {
 
 export default function MoreMenu({ onClose }: MoreMenuProps) {
   return (
-    <div className="fixed left-15 bottom-42 bg-white shadow-lg rounded-2xl w-72 py-2 z-99999 border border-gray-200">
+    <div className="fixed left-15 bottom-35 bg-white shadow-lg rounded-2xl w-72 py-2 z-99999 border border-gray-200">
       <ul className="flex flex-col text-[15px] font-semibold">
         <li className="flex justify-between items-center px-4 py-3 hover:bg-gray-100 cursor-pointer">
           <div className="flex items-center gap-3">
@@ -26,42 +25,30 @@ export default function MoreMenu({ onClose }: MoreMenuProps) {
             Beta
           </span>
         </li>
-
         <li className="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 cursor-pointer">
           <Globe size={22} />
           <span>Listas</span>
         </li>
-
         <li className="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 cursor-pointer">
           <CreditCard size={22} />
           <span>Premium</span>
         </li>
-
-        <li className="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 cursor-pointer">
-          <Bookmark size={22} />
-          <span>Itens salvos</span>
-        </li>
-
         <li className="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 cursor-pointer">
           <Users size={22} />
           <span>Comunidades</span>
         </li>
-
         <li className="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 cursor-pointer">
           <DollarSign size={22} />
           <span>Monetização</span>
         </li>
-
         <li className="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 cursor-pointer">
           <Megaphone size={22} />
           <span>Ads</span>
         </li>
-
         <li className="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 cursor-pointer">
           <Users size={22} />
           <span>Crie seu Espaço</span>
         </li>
-
         <li
           onClick={onClose}
           className="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 cursor-pointer rounded-b-2xl"

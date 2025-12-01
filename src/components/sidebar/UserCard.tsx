@@ -34,7 +34,7 @@ export default function UserCard() {
             src={user?.avatar_url}
             className="max-w-full object-cover h-10 w-10 rounded-full flex-shrink-0 overflow-y-hidden"
           />
-          <div className="hidden lg:block">
+          <div>
             <p className="font-bold leading-tight truncate">{user?.name}</p>
             <p className="text-gray-500 text-sm leading-tight truncate">
               @{user?.username}
@@ -42,7 +42,7 @@ export default function UserCard() {
           </div>
         </div>
 
-        <button className="p-2">
+        <button className="hidden md:block p-2">
           <MoreHorizontal size={20} />
         </button>
       </div>
