@@ -94,7 +94,7 @@ export default function Sidebar() {
         </nav>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="btn w-full mt-3"
+          className="hidden lg:block btn w-full mt-3"
         >
           Postar
         </button>

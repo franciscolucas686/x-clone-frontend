@@ -20,11 +20,27 @@ body {
 }
 
 .col-left {
-  @apply w-1/2 flex items-center justify-center bg-white;
+  @apply w-full md:w-1/2 flex justify-center items-center bg-white;
 }
 
-.col.right {
-  @apply h-dvh w-dvh flex flex-col bg-white py-[3rem];
+.col-right {
+  @apply w-full md:w-1/2 flex flex-col items-center md:items-start justify-center bg-white md:py-12;
+}
+
+.right-title {
+  @apply text-4xl md:text-6xl font-bold py-12 text-center md:text-left;
+}
+
+.auth-block {
+  @apply flex flex-col items-center md:items-start justify-start;
+}
+
+.auth-title {
+  @apply text-3xl font-bold mb-8 cursor-default;
+}
+
+.divider {
+  @apply flex items-center w-64 my-4;
 }
 
 .btn {
