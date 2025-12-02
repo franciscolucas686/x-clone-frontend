@@ -8,6 +8,7 @@ Este frontend consome a API disponibilizada pelo backend (por exemplo, o reposit
 ## 🚀 Deploy (Vercel)
 Aplicação online:
 👉 [https://x-clone-frontend-nu.vercel.app/](https://x-clone-frontend-nu.vercel.app/)
+
 ⚠️ Importante:
 O backend está hospedado no Render em modo free.
 Por isso, a primeira requisição após um período de inatividade pode demorar entre 30–60 segundos.
