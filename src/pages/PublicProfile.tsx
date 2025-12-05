@@ -4,7 +4,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import FollowButton from "../components/button/FollowButton";
 import Post from "../components/feed/Post";
 import CommentModal from "../components/modal/CommentModal";
-import { ModalRoot } from "../components/modal/ModalRoot";
 import { Spinner } from "../components/spinner/Spinner";
 import { clearUserPosts } from "../features/posts/postSlice";
 import { fetchUserPosts } from "../features/posts/postThunks";
@@ -157,7 +156,6 @@ export default function PublicProfile() {
           onClose={() => setSelectedPostId(null)}
         />
       )}
-      <ModalRoot />
     </div>
   );
 }

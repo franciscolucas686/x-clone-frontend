@@ -1,10 +1,11 @@
-import { useDispatch } from "react-redux";
+import { useState } from "react";
 import { Xlogo } from "../components/icons/Xlogo";
-import { ModalRoot } from "../components/modal/ModalRoot";
-import { openModal } from "../features/modal/modalSlice";
+import LoginModal from "../components/modal/LoginModal";
+import RegisterModal from "../components/modal/RegisterModal";
 
 export default function Home() {
-  const dispatch = useDispatch();
+  const [showLogin, setShowLogin] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
 
   return (
     <div className="flex flex-col items-center min-w-screen md:flex-row md:items-center">
@@ -19,10 +20,7 @@ export default function Home() {
           <h2 className="auth-title">Inscreva-se hoje</h2>
 
           <div className="flex flex-col">
-            <button
-              className="btn"
-              onClick={() => dispatch(openModal("register"))}
-            >
+            <button className="btn" onClick={() => setShowRegister(true)}>
               Criar conta
             </button>
 
@@ -32,10 +30,7 @@ export default function Home() {
               <div className="flex-grow h-px bg-gray-300"></div>
             </div>
 
-            <button
-              className="btn"
-              onClick={() => dispatch(openModal("login"))}
-            >
+            <button className="btn" onClick={() => setShowLogin(true)}>
               Entrar
             </button>
           </div>
@@ -46,7 +41,8 @@ export default function Home() {
         Todos direitos reservados © Francisco Lucas 2025
       </footer>
 
-      <ModalRoot />
+      {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+      {showRegister && <RegisterModal onClose={() => setShowRegister(false)} />}
     </div>
   );
 }

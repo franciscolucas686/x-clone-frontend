@@ -2,9 +2,8 @@ import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CommentModal from "../components/modal/CommentModal";
-import { ModalRoot } from "../components/modal/ModalRoot";
+import EditProfileModal from "../components/modal/EditProfileModal";
 import { Spinner } from "../components/spinner/Spinner";
-import { openModal } from "../features/modal/modalSlice";
 import { clearUserPosts } from "../features/posts/postSlice";
 import { fetchUserPosts } from "../features/posts/postThunks";
 import { fetchUserByUsername } from "../features/users/userThunks";
@@ -16,6 +15,7 @@ import Post from "../components/feed/Post";
 export default function Profile() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const [showEdit, setShowEdit] = useState(false);
 
   const { user } = useAppSelector((state) => state.auth);
   const { selectedUser } = useAppSelector((state) => state.users);
@@ -137,7 +137,7 @@ export default function Profile() {
         </div>
 
         <button
-          onClick={() => dispatch(openModal("editProfile"))}
+          onClick={() => setShowEdit(true)}
           className="px-4 py-2 border border-gray-300 rounded-full font-semibold hover:bg-gray-100 transition cursor-pointer"
         >
           Editar perfil
@@ -176,7 +176,8 @@ export default function Profile() {
           onClose={() => setSelectedPostId(null)}
         />
       )}
-      <ModalRoot />
+
+      {showEdit && <EditProfileModal onClose={() => setShowEdit(false)} />}
     </div>
   );
 }

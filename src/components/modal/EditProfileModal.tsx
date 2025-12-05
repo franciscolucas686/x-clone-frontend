@@ -2,13 +2,12 @@ import { Camera } from "lucide-react";
 import { useEffect, useState } from "react";
 import { clearError, setError } from "../../features/auth/authSlice";
 import { updateProfile } from "../../features/auth/authThunks";
-import { closeModal } from "../../features/modal/modalSlice";
 import { fetchUserByUsername } from "../../features/users/userThunks";
 import { useAppDispatch, useAppSelector } from "../../hooks/useAppSelector";
 import { CloseIcon } from "../icons/CloseIcon";
 import ModalLayout from "./ModalLayout";
 
-export default function EditProfileModal() {
+export default function EditProfileModal({ onClose }: { onClose: () => void }) {
   const dispatch = useAppDispatch();
   const { user, loading, error } = useAppSelector((state) => state.auth);
 
@@ -64,15 +63,12 @@ export default function EditProfileModal() {
     if (updateProfile.fulfilled.match(result)) {
       const updatedUser = result.payload;
       dispatch(fetchUserByUsername(updatedUser.username));
-      dispatch(closeModal());
+      onClose();
     }
   };
 
   return (
-    <ModalLayout
-      onClose={() => dispatch(closeModal())}
-      className="max-w-[600px]"
-    >
+    <ModalLayout onClose={onClose} className="max-w-[600px]">
       <h2 className="text-xl font-bold mb-4 text-center cursor-default">
         Editar perfil
       </h2>
