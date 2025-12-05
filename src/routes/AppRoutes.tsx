@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Feed from "../components/feed/Feed";
-import { ModalRoot } from "../components/modal/ModalRoot";
 import { restoreUser } from "../features/auth/authThunks";
 import { useAppDispatch } from "../hooks/useAppSelector";
 import AppLayout from "../layouts/AppLayout";
 import ExplorerPage from "../pages/ExplorerPage";
+import FollowListPage from "../pages/FollowListPage";
 import Home from "../pages/Home";
 import MessagePage from "../pages/MessagePage";
 import NotificationsPage from "../pages/NotificationsPage";
@@ -13,7 +13,6 @@ import Profile from "../pages/ProfilePage";
 import PublicProfile from "../pages/PublicProfile";
 import PrivateRoute from "./PrivateRoute";
 import PublicRoute from "./PublicRoute";
-import FollowListPage from "../pages/FollowListPage";
 
 export function AppRoutes() {
   const dispatch = useAppDispatch();
@@ -24,7 +23,6 @@ export function AppRoutes() {
 
   return (
     <BrowserRouter>
-      <ModalRoot />
       <Routes>
         <Route element={<PublicRoute />}>
           <Route path="/" element={<Home />} />
