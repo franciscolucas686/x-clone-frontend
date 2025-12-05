@@ -34,7 +34,6 @@ export default function FollowListPage() {
   const authUserId = useAppSelector((state) => state.auth.user?.id);
   const activeTab = location.pathname.includes("/following") ? "following" : "followers";
 
-  // Remove duplicados
   const uniqueById = <T extends { id: number }>(list: T[]): T[] => {
     const map = new Map<number, T>();
     list.forEach((item) => map.set(item.id, item));
@@ -44,13 +43,11 @@ export default function FollowListPage() {
   const safeFollowers = uniqueById(followers);
   const safeFollowing = uniqueById(following);
 
-  // Carrega o usuário selecionado
   useEffect(() => {
     if (!username) return;
     dispatch(fetchUserByUsername(username));
   }, [username, dispatch]);
 
-  // Carrega a lista de seguidores ou seguindo
   useEffect(() => {
     if (!selectedUser) return;
     dispatch(clearFollowLists());
@@ -116,7 +113,6 @@ export default function FollowListPage() {
 
   return (
     <div className="flex flex-col">
-      {/* Cabeçalho */}
       <div className="flex items-center">
         <button onClick={() => navigate(-1)}>
           <div className="m-2 rounded-full hover:bg-gray-100 transition">
@@ -128,7 +124,6 @@ export default function FollowListPage() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex border-b border-gray-200 mt-2">
         <Link
           to={`/follow/${selectedUser.username}/followers`}
@@ -148,13 +143,11 @@ export default function FollowListPage() {
         </Link>
       </div>
 
-      {/* Lista de usuários */}
       <div className="flex flex-col gap-2 mt-2 px-4">
         {activeTab === "followers" && safeFollowers.map(renderUserItem)}
         {activeTab === "following" && safeFollowing.map(renderUserItem)}
       </div>
 
-      {/* Loader */}
       {(loadingFollowers || loadingFollowing) && (
         <div className="flex justify-center py-4">
           <Spinner size={30} color="border-t-blue-500" />
@@ -162,7 +155,6 @@ export default function FollowListPage() {
         </div>
       )}
 
-      {/* Botão "Ver mais" */}
       {((activeTab === "followers" && hasMoreFollowers) ||
         (activeTab === "following" && hasMoreFollowing)) && (
         <button onClick={handleLoadMore} className="p-2 text-blue-500 text-center mt-2">

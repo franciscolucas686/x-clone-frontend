@@ -1,27 +1,16 @@
 import { MoreHorizontal } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useRef, useState } from "react";
 import { useAppSelector } from "../../hooks/useAppSelector";
+import useClickOutside from "../../hooks/useClickOutside";
 import UserMenu from "./UserMenu";
 
 export default function UserCard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { user } = useAppSelector((state) => state.auth);
 
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
+  useClickOutside(wrapperRef, () => setMenuOpen(false), menuOpen);
 
   return (
     <div ref={wrapperRef} className="relative">
