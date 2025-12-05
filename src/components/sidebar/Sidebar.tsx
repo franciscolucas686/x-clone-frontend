@@ -1,12 +1,13 @@
 import { Bell, Home, Mail, MoreHorizontal, Search, User } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { fetchUserByUsername } from "../../features/users/userThunks";
+import { useAppDispatch, useAppSelector } from "../../hooks/useAppSelector";
+import useClickOutside from "../../hooks/useClickOutside";
 import { Xlogo } from "../icons/Xlogo";
 import ButtonPostModal from "../modal/ButtonPostModal";
 import MoreMenu from "./MoreMenu";
 import UserCard from "./UserCard";
-import { useAppDispatch, useAppSelector } from "../../hooks/useAppSelector";
-import { fetchUserByUsername } from "../../features/users/userThunks";
 
 const navItems = [
   { icon: Home, label: "Página inicial", path: "/feed" },
@@ -23,25 +24,10 @@ export default function Sidebar() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowMoreMenu(false);
-      }
-    }
-
-    if (showMoreMenu) {
-      document.addEventListener("mousedown", handleClickOutside);
-    } else {
-      document.removeEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showMoreMenu]);
+  useClickOutside(menuRef, () => setShowMoreMenu(false), showMoreMenu);
 
   const handleProfileClick = async () => {
     if (user?.username) {
@@ -57,17 +43,18 @@ export default function Sidebar() {
             <Xlogo />
           </Link>
         </div>
+
         <nav className="space-y-4 w-full">
           {navItems.map(({ icon: Icon, label, path }) =>
             label === "Mais" ? (
               <div key={label} ref={menuRef} className="relative">
                 <button
-                  key={label}
                   onClick={() => setShowMoreMenu((prev) => !prev)}
                   className="flex p-2 px-6 cursor-pointer rounded-full hover:bg-gray-200 items-center transition-colors duration-100 ease-in-out space-x-3 font-semibold w-full text-left"
                 >
                   <Icon size={30} className="mr-5" /> <span>{label}</span>
                 </button>
+
                 {showMoreMenu && (
                   <MoreMenu onClose={() => setShowMoreMenu(false)} />
                 )}
@@ -92,6 +79,7 @@ export default function Sidebar() {
             )
           )}
         </nav>
+
         <button
           onClick={() => setIsModalOpen(true)}
           className="hidden lg:block btn w-full mt-3"
