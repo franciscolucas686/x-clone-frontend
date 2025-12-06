@@ -1,7 +1,8 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import axios, { AxiosError } from "axios";
+import { AxiosError } from "axios";
 import api from "../../api/axios";
 import type { PaginatedResponse } from "../../features/pagination/types";
+import { handleThunkError } from "../../utils/errors";
 import type { Post, PostComment } from "./types";
 
 export const fetchPosts = createAsyncThunk<
@@ -12,14 +13,11 @@ export const fetchPosts = createAsyncThunk<
   try {
     const { data } = await api.get<Post[]>("/posts/");
     return data;
-  } catch (error: unknown) {
-    if (axios.isAxiosError(error)) {
-      if (error.response?.status === 404) {
-        return [] as Post[];
-      }
+  } catch (error) {
+    if (error instanceof AxiosError && error.response?.status === 404) {
+      return [];
     }
-
-    return rejectWithValue("Erro ao buscar posts");
+    return rejectWithValue(handleThunkError(error, "Erro ao buscar posts"));
   }
 });
 
@@ -34,7 +32,6 @@ export const fetchFollowingPosts = createAsyncThunk<
 >("posts/fetchFollowingPosts", async (arg, { rejectWithValue }) => {
   try {
     const nextUrl = arg && "nextUrl" in arg ? arg.nextUrl : undefined;
-
     const endpoint = nextUrl ?? "/posts/following/";
 
     const { data } = await api.get<PaginatedResponse<Post>>(endpoint);
@@ -44,14 +41,17 @@ export const fetchFollowingPosts = createAsyncThunk<
       next: data.next,
       isInitialLoad: !nextUrl,
     };
-  } catch (error: unknown) {
-    if (axios.isAxiosError(error)) {
-      return rejectWithValue(
-        error.response?.data?.detail ?? "Erro ao buscar posts"
-      );
+  } catch (error) {
+    if (error instanceof AxiosError && error.response?.status === 404) {
+      return {
+        results: [],
+        next: null,
+        isInitialLoad: true,
+      };
     }
-
-    return rejectWithValue("Erro desconhecido ao buscar posts");
+    return rejectWithValue(
+      handleThunkError(error, "Erro ao buscar posts dos seguidos")
+    );
   }
 });
 
@@ -63,9 +63,8 @@ export const createPost = createAsyncThunk<
   try {
     const { data } = await api.post<Post>("/posts/", { text });
     return data;
-  } catch (err) {
-    console.error("createPost error:", err);
-    return rejectWithValue("Erro ao criar post");
+  } catch (error) {
+    return rejectWithValue(handleThunkError(error, "Erro ao criar post"));
   }
 });
 
@@ -79,18 +78,20 @@ export const createComment = createAsyncThunk<
       text,
     });
     return data;
-  } catch (err) {
-    const error = err as AxiosError;
-    console.error(
-      "createComment error:",
-      error.response?.data || error.message
+  } catch (error) {
+    return rejectWithValue(
+      handleThunkError(error, "Erro ao enviar comentário")
     );
-    return rejectWithValue("Erro ao enviar comentário");
   }
 });
 
 export const toggleLike = createAsyncThunk<
-  { postId: number; is_liked: boolean; likes_delta: number; serverPost?: Post },
+  {
+    postId: number;
+    is_liked: boolean;
+    likes_delta: number;
+    serverPost?: Post;
+  },
   { postId: number },
   { rejectValue: string }
 >("posts/toggleLike", async ({ postId }, { rejectWithValue }) => {
@@ -106,19 +107,21 @@ export const toggleLike = createAsyncThunk<
       const serverPost = data as Post;
       return {
         postId,
-        is_liked: serverPost.is_liked ?? true,
+        is_liked: serverPost.is_liked,
         likes_delta: 0,
         serverPost,
       };
     }
 
     const message: string = data?.message ?? "";
-    const isLiked = message === "Curtido";
-    const likes_delta = isLiked ? 1 : -1;
-    return { postId, is_liked: isLiked, likes_delta };
-  } catch (err) {
-    console.error("toggleLike error:", err);
-    return rejectWithValue("Erro ao curtir/descurtir post");
+    const is_liked = message === "Curtido";
+    const likes_delta = is_liked ? 1 : -1;
+
+    return { postId, is_liked, likes_delta };
+  } catch (error) {
+    return rejectWithValue(
+      handleThunkError(error, "Erro ao curtir/descurtir post")
+    );
   }
 });
 
@@ -129,11 +132,15 @@ export const fetchUserPosts = createAsyncThunk<
     next: string | null;
     previous: string | null;
   },
-  { username: string; isInitialLoad: boolean }
->(
-  "posts/fetchUserPosts",
-  async ({ username }) => {
+  { username: string; isInitialLoad?: boolean },
+  { rejectValue: string }
+>("posts/fetchUserPosts", async ({ username }, { rejectWithValue }) => {
+  try {
     const response = await api.get(`/posts/user/${username}/posts/`);
     return response.data;
+  } catch (error) {
+    return rejectWithValue(
+      handleThunkError(error, "Erro ao carregar posts do usuário")
+    );
   }
-);
+});
