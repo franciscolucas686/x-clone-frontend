@@ -5,6 +5,7 @@ import type { User } from "../users/types";
 import { fetchUserByUsername } from "../users/userThunks";
 import {
   loginUser,
+  logoutUser,
   registerUser,
   restoreUser,
   updateProfile,
@@ -33,13 +34,15 @@ const authSlice = createSlice({
     setError: (state, action: PayloadAction<string>) => {
       state.error = action.payload;
     },
-    logout: (state) => {
-      state.user = null;
-      state.token = null;
-    },
   },
   extraReducers: (builder) => {
     builder
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.user = null;
+        state.token = null;
+        state.loading = false;
+        state.error = null;
+      })
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
       })
@@ -103,7 +106,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { setError, clearError, logout } = authSlice.actions;
+export const { setError, clearError} = authSlice.actions;
 export default authSlice.reducer;
 
 export const selectAuth = (state: RootState) => state.auth;

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { logout } from "../../features/auth/authSlice";
+import { logoutUser } from "../../features/auth/authThunks";
 import { useAppDispatch, useAppSelector } from "../../hooks/useAppSelector";
 
 export default function UserMenu() {
@@ -7,8 +7,8 @@ export default function UserMenu() {
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.auth);
 
-  const handleLogout = () => {
-    dispatch(logout());
+  const handleLogout = async () => {
+    await dispatch(logoutUser());
     navigate("/");
   };
   return (
