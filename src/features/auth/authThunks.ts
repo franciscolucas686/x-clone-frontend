@@ -1,6 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../api/axios";
-import { translateError } from "../../utils/errors";
+import { handleThunkError } from "../../utils/errors";
 import type { User } from "../users/types";
 
 interface LoginCredentials {
@@ -28,6 +28,10 @@ export interface UpdateProfilePayload {
   avatar?: File | null;
 }
 
+export const logoutUser = createAsyncThunk("auth/logoutUser", async () => {
+  localStorage.removeItem("access");
+  return null;
+});
 
 export const loginUser = createAsyncThunk<
   LoginResponse,
@@ -38,18 +42,14 @@ export const loginUser = createAsyncThunk<
     const res = await api.post("/token/", credentials);
     const token = res.data.access as string;
 
-    const userRes = await api.get<User>("/profile/", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    localStorage.setItem("access", token);
 
-    console.log("🔍 Resposta do /profile/:", userRes.data);
-
+    const userRes = await api.get<User>("/profile/");
     return { token, user: userRes.data };
-  } catch (error) {
-    if (error instanceof Error) {
-      return rejectWithValue("Usuário ou senha incorretos!");
-    }
-    return rejectWithValue("Erro inesperado ao tentar fazer login.");
+  } catch (err) {
+    return rejectWithValue(
+      handleThunkError(err, "Falha ao fazer login. Tente novamente.")
+    );
   }
 });
 
@@ -71,28 +71,14 @@ export const registerUser = createAsyncThunk<
       password: credentials.password,
     });
 
-    const token = loginRes.data.access;
+    const token = loginRes.data.access as string;
     localStorage.setItem("access", token);
 
-    const userRes = await api.get("/profile/", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const userRes = await api.get("/profile/");
 
     return { token, user: userRes.data } as LoginResponse;
-  } catch (err: unknown) {
-    if (typeof err === "object" && err !== null && "response" in err) {
-      const axiosError = err as { response?: { data?: unknown } };
-
-      const raw = axiosError.response?.data;
-
-      const message = typeof raw === "string" ? raw : JSON.stringify(raw);
-
-      const translated = translateError(message);
-
-      return rejectWithValue(translated);
-    }
-
-    return rejectWithValue("Erro desconhecido ao registrar usuário.");
+  } catch (err) {
+    return rejectWithValue(handleThunkError(err, "Erro ao registrar usuário."));
   }
 });
 
@@ -102,42 +88,33 @@ export const restoreUser = createAsyncThunk<User | null>(
     const token = localStorage.getItem("access");
     if (!token) return null;
 
-    const res = await api.get("/profile/", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await api.get("/profile/");
 
     return res.data;
   }
 );
 
-export const updateProfile = createAsyncThunk<User, UpdateProfilePayload, { rejectValue: string }>(
-  "auth/updateProfile",
-  async (data, { rejectWithValue }) => {
-    try {
-      const formData = new FormData();
-      Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== "") {
-          formData.append(key, value instanceof File ? value : String(value));
-        }
-      });
+export const updateProfile = createAsyncThunk<
+  User,
+  UpdateProfilePayload,
+  { rejectValue: string }
+>("auth/updateProfile", async (data, { rejectWithValue }) => {
+  try {
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        formData.append(key, value instanceof File ? value : String(value));
+      }
+    });
 
-      const res = await api.patch<User>("/profile/", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+    const res = await api.patch<User>("/profile/", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
 
     return res.data;
-  } catch (err: unknown) {
-    if (
-      typeof err === "object" &&
-      err !== null &&
-      "response" in err &&
-      (err as { response?: { data?: { detail?: string } } }).response?.data
-    ) {
-      const message =
-        (err as { response?: { data?: { detail?: string } } }).response?.data
-          ?.detail ?? "Erro ao atualizar perfil.";
-      return rejectWithValue(message);
-    }
-    return rejectWithValue("Erro desconhecido.");
+  } catch (err) {
+    return rejectWithValue(
+      handleThunkError(err, "Erro ao atualizar o perfil.")
+    );
   }
 });

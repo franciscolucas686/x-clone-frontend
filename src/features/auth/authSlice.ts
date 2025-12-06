@@ -36,7 +36,6 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.token = null;
-      localStorage.removeItem("access");
     },
   },
   extraReducers: (builder) => {
@@ -50,7 +49,6 @@ const authSlice = createSlice({
           state.loading = false;
           state.token = action.payload.token;
           state.user = action.payload.user;
-          localStorage.setItem("access", action.payload.token);
         }
       )
       .addCase(loginUser.rejected, (state, action) => {
@@ -70,7 +68,6 @@ const authSlice = createSlice({
           state.loading = false;
           state.user = action.payload.user;
           state.token = action.payload.token;
-          localStorage.setItem("access", action.payload.token);
         }
       )
       .addCase(registerUser.rejected, (state, action) => {
