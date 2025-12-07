@@ -3,11 +3,11 @@ export interface User {
   username: string;
   name: string;
   avatar_url: string;
-  joined_display?: string;
-  followers_count?: number;
-  following_count?: number;
-  is_following?: boolean;
-  posts_count?: number;
+  joined_display: string;
+  followers_count: number;
+  following_count: number;
+  is_following: boolean;
+  posts_count: number;
 }
 
 export interface UsersState {
@@ -16,6 +16,7 @@ export interface UsersState {
   list: User[];
 
   loading: boolean;
+  error: string | null;
 
   followers: User[];
   following: User[];
@@ -30,8 +31,6 @@ export interface UsersState {
   loadingFollowing: boolean;
 
   loadingFollowIds: number[];
-
-  error: string | null;
 }
 
 export interface PaginatedUsersResponse {
@@ -40,4 +39,3 @@ export interface PaginatedUsersResponse {
   previous: string | null;
   results: User[];
 }
-
