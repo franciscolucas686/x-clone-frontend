@@ -1,5 +1,5 @@
 import { ArrowLeft } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import FollowButton from "../components/button/FollowButton";
 import { Spinner } from "../components/spinner/Spinner";
@@ -11,6 +11,7 @@ import {
   fetchUserByUsername,
 } from "../features/users/userThunks";
 import { useAppDispatch, useAppSelector } from "../hooks/useAppSelector";
+import uniqueById from "../utils/uniqueById";
 
 export default function FollowListPage() {
   const { username } = useParams<{ username: string }>();
@@ -32,16 +33,15 @@ export default function FollowListPage() {
   } = useAppSelector((state) => state.users);
 
   const authUserId = useAppSelector((state) => state.auth.user?.id);
-  const activeTab = location.pathname.includes("/following") ? "following" : "followers";
 
-  const uniqueById = <T extends { id: number }>(list: T[]): T[] => {
-    const map = new Map<number, T>();
-    list.forEach((item) => map.set(item.id, item));
-    return Array.from(map.values());
-  };
+  const activeTab: "followers" | "following" = location.pathname.includes(
+    "/following"
+  )
+    ? "following"
+    : "followers";
 
-  const safeFollowers = uniqueById(followers);
-  const safeFollowing = uniqueById(following);
+  const safeFollowers = useMemo(() => uniqueById(followers), [followers]);
+  const safeFollowing = useMemo(() => uniqueById(following), [following]);
 
   useEffect(() => {
     if (!username) return;
@@ -49,26 +49,25 @@ export default function FollowListPage() {
   }, [username, dispatch]);
 
   useEffect(() => {
-    if (!selectedUser) return;
-    dispatch(clearFollowLists());
+    if (!selectedUser?.id) return;
 
-    if (activeTab === "followers") {
-      dispatch(fetchFollowers({ userId: selectedUser.id }));
-    } else {
-      dispatch(fetchFollowing({ userId: selectedUser.id }));
-    }
-  }, [selectedUser, activeTab, dispatch]);
+    dispatch(clearFollowLists());
+    dispatch(fetchFollowers({ userId: selectedUser.id }));
+    dispatch(fetchFollowing({ userId: selectedUser.id }));
+  }, [selectedUser?.id, dispatch]);
 
   const handleLoadMore = () => {
     if (!selectedUser) return;
 
-    if (activeTab === "followers" && followersNext && !loadingFollowers) {
-      dispatch(fetchFollowers({ userId: selectedUser.id, url: followersNext }));
-    }
+    const isFollowers = activeTab === "followers";
+    const nextUrl = isFollowers ? followersNext : followingNext;
+    const isLoading = isFollowers ? loadingFollowers : loadingFollowing;
 
-    if (activeTab === "following" && followingNext && !loadingFollowing) {
-      dispatch(fetchFollowing({ userId: selectedUser.id, url: followingNext }));
-    }
+    if (!nextUrl || isLoading) return;
+
+    const fn = isFollowers ? fetchFollowers : fetchFollowing;
+
+    dispatch(fn({ userId: selectedUser.id, url: nextUrl }));
   };
 
   const renderUserItem = (user: User) => {
@@ -95,14 +94,18 @@ export default function FollowListPage() {
             </Link>
           </div>
         </div>
+
         {!isAuthUser && (
-          <FollowButton userId={user.id} isFollowing={user.is_following ?? false} />
+          <FollowButton
+            userId={user.id}
+            isFollowing={Boolean(user.is_following)}
+          />
         )}
       </div>
     );
   };
 
-  if (loading || !selectedUser) {
+  if (!selectedUser || loading) {
     return (
       <div className="flex justify-center items-center py-6 min-h-[40vh]">
         <Spinner size={30} color="border-t-blue-500" />
@@ -110,6 +113,12 @@ export default function FollowListPage() {
       </div>
     );
   }
+
+  const list = activeTab === "followers" ? safeFollowers : safeFollowing;
+  const hasMore =
+    activeTab === "followers" ? hasMoreFollowers : hasMoreFollowing;
+  const isLoadingMore =
+    activeTab === "followers" ? loadingFollowers : loadingFollowing;
 
   return (
     <div className="flex flex-col">
@@ -124,19 +133,28 @@ export default function FollowListPage() {
         </div>
       </div>
 
-      <div className="flex border-b border-gray-200 mt-2">
+      <div role="tablist" className="flex border-b border-gray-200 mt-2">
         <Link
+          role="tab"
+          aria-selected={activeTab === "followers"}
           to={`/follow/${selectedUser.username}/followers`}
           className={`p-3 flex-1 text-center ${
-            activeTab === "followers" ? "border-b-4 border-blue-500 font-semibold" : ""
+            activeTab === "followers"
+              ? "border-b-4 border-blue-500 font-semibold"
+              : ""
           }`}
         >
           Seguidores
         </Link>
+
         <Link
+          role="tab"
+          aria-selected={activeTab === "following"}
           to={`/follow/${selectedUser.username}/following`}
           className={`p-3 flex-1 text-center ${
-            activeTab === "following" ? "border-b-4 border-blue-500 font-semibold" : ""
+            activeTab === "following"
+              ? "border-b-4 border-blue-500 font-semibold"
+              : ""
           }`}
         >
           Seguindo
@@ -144,21 +162,23 @@ export default function FollowListPage() {
       </div>
 
       <div className="flex flex-col gap-2 mt-2 px-4">
-        {activeTab === "followers" && safeFollowers.map(renderUserItem)}
-        {activeTab === "following" && safeFollowing.map(renderUserItem)}
+        {list.map(renderUserItem)}
       </div>
 
-      {(loadingFollowers || loadingFollowing) && (
+      {isLoadingMore && (
         <div className="flex justify-center py-4">
           <Spinner size={30} color="border-t-blue-500" />
-          <span className="ml-2">Carregando usuários ...</span>
+          <span className="ml-2">Carregando usuários...</span>
         </div>
       )}
 
-      {((activeTab === "followers" && hasMoreFollowers) ||
-        (activeTab === "following" && hasMoreFollowing)) && (
-        <button onClick={handleLoadMore} className="p-2 text-blue-500 text-center mt-2">
-          Ver mais
+      {hasMore && (
+        <button
+          disabled={isLoadingMore}
+          onClick={handleLoadMore}
+          className="p-2 text-blue-500 text-center mt-2 disabled:opacity-50"
+        >
+          {isLoadingMore ? "Carregando..." : "Ver mais"}
         </button>
       )}
     </div>
