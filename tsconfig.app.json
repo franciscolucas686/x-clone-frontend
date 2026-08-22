@@ -9,6 +9,11 @@
 
     /* Bundler mode */
     "moduleResolution": "bundler",
+    /* Imports absolutos: as zonas de camada do eslint.config.js casam por
+       especificador, e um "../../ui" escaparia delas. Precisa concordar com
+       resolve.alias em vite.config.ts e vitest.config.ts. */
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] },
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",

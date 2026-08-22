@@ -28,9 +28,11 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Environment files
+# Environment files. A negação é obrigatória: `.env.*` casa com `.env.example`, e sem
+# ela o template que o README manda copiar nunca chegaria ao repositório.
 .env
 .env.*
+!.env.example
 .env.dev
 .env.local
 .env.prod
