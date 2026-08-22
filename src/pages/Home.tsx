@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Xlogo } from "../components/icons/Xlogo";
-import LoginModal from "../components/modal/LoginModal";
-import RegisterModal from "../components/modal/RegisterModal";
+import { Xlogo } from "@/components/icons/Xlogo";
+import LoginModal from "@/components/modal/LoginModal";
+import RegisterModal from "@/components/modal/RegisterModal";
 
 export default function Home() {
   const [showLogin, setShowLogin] = useState(false);

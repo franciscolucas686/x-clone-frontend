@@ -1,13 +1,13 @@
 import { Bell, Home, Mail, MoreHorizontal, Search, User } from "lucide-react";
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchUserByUsername } from "../../features/users/userThunks";
-import { useAppDispatch, useAppSelector } from "../../hooks/useAppSelector";
-import useClickOutside from "../../hooks/useClickOutside";
-import { Xlogo } from "../icons/Xlogo";
-import ButtonPostModal from "../modal/ButtonPostModal";
-import MoreMenu from "./MoreMenu";
-import UserCard from "./UserCard";
+import { fetchUserByUsername } from "@/features/users/userThunks";
+import { useAppDispatch, useAppSelector } from "@/hooks/useAppSelector";
+import useClickOutside from "@/hooks/useClickOutside";
+import { Xlogo } from "@/components/icons/Xlogo";
+import ButtonPostModal from "@/components/modal/ButtonPostModal";
+import MoreMenu from "@/components/sidebar/MoreMenu";
+import UserCard from "@/components/sidebar/UserCard";
 
 const navItems = [
   { icon: Home, label: "Página inicial", path: "/feed" },
@@ -55,9 +55,7 @@ export default function Sidebar() {
                   <Icon size={30} className="mr-5" /> <span>{label}</span>
                 </button>
 
-                {showMoreMenu && (
-                  <MoreMenu onClose={() => setShowMoreMenu(false)} />
-                )}
+                {showMoreMenu && <MoreMenu onClose={() => setShowMoreMenu(false)} />}
               </div>
             ) : label === "Perfil" ? (
               <Link
@@ -76,14 +74,11 @@ export default function Sidebar() {
               >
                 <Icon size={30} className="mr-5" /> <span>{label}</span>
               </Link>
-            )
+            ),
           )}
         </nav>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="hidden lg:block btn w-full mt-3"
-        >
+        <button onClick={() => setIsModalOpen(true)} className="hidden lg:block btn w-full mt-3">
           Postar
         </button>
       </div>

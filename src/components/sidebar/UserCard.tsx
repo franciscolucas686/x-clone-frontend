@@ -1,8 +1,8 @@
 import { MoreHorizontal } from "lucide-react";
 import { useRef, useState } from "react";
-import { useAppSelector } from "../../hooks/useAppSelector";
-import useClickOutside from "../../hooks/useClickOutside";
-import UserMenu from "./UserMenu";
+import { useAppSelector } from "@/hooks/useAppSelector";
+import useClickOutside from "@/hooks/useClickOutside";
+import UserMenu from "@/components/sidebar/UserMenu";
 
 export default function UserCard() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -25,9 +25,7 @@ export default function UserCard() {
           />
           <div>
             <p className="font-bold leading-tight truncate">{user?.name}</p>
-            <p className="text-gray-500 text-sm leading-tight truncate">
-              @{user?.username}
-            </p>
+            <p className="text-gray-500 text-sm leading-tight truncate">@{user?.username}</p>
           </div>
         </div>
 

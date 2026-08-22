@@ -1,6 +1,6 @@
 import { MessageCircle } from "lucide-react";
 import { useState } from "react";
-import MessageModal from "../components/modal/MessageModal";
+import MessageModal from "@/components/modal/MessageModal";
 
 export default function MessagePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -19,8 +19,8 @@ export default function MessagePage() {
           Receba as boas-vindas à sua caixa de entrada!
         </h3>
         <p className=" text-xl text-gray-500 cursor-default">
-          Escreva, compartilhe posts e muito mais com conversas privadas entre
-          voce e outras pessoas no X.
+          Escreva, compartilhe posts e muito mais com conversas privadas entre voce e outras pessoas
+          no X.
         </p>
         <button
           onClick={() => setIsModalOpen(true)}

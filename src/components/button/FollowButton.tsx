@@ -1,5 +1,5 @@
-import { useAppDispatch, useAppSelector } from "../../hooks/useAppSelector";
-import { toggleFollow } from "../../features/users/userThunks";
+import { useAppDispatch, useAppSelector } from "@/hooks/useAppSelector";
+import { toggleFollow } from "@/features/users/userThunks";
 
 interface FollowButtonProps {
   userId: number;

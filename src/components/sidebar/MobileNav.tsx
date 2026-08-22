@@ -13,11 +13,7 @@ export default function MobileNav() {
   return (
     <nav className="flex justify-around items-center h-16 bg-white">
       {mobileItems.map(({ icon: Icon, path }) => (
-        <Link
-          key={path}
-          to={path}
-          className="flex flex-col items-center justify-center p-2"
-        >
+        <Link key={path} to={path} className="flex flex-col items-center justify-center p-2">
           <Icon size={26} />
         </Link>
       ))}

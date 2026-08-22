@@ -1,7 +1,7 @@
 import { Outlet } from "react-router-dom";
-import Rightbar from "../components/rightbar/Rightbar";
-import MobileNav from "../components/sidebar/MobileNav";
-import Sidebar from "../components/sidebar/Sidebar";
+import Rightbar from "@/components/rightbar/Rightbar";
+import MobileNav from "@/components/sidebar/MobileNav";
+import Sidebar from "@/components/sidebar/Sidebar";
 
 export default function UserPage() {
   return (

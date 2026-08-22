@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { logoutUser } from "../../features/auth/authThunks";
-import { useAppDispatch, useAppSelector } from "../../hooks/useAppSelector";
+import { logoutUser } from "@/features/auth/authThunks";
+import { useAppDispatch, useAppSelector } from "@/hooks/useAppSelector";
 
 export default function UserMenu() {
   const dispatch = useAppDispatch();
