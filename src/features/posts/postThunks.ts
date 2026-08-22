@@ -1,70 +1,87 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { AxiosError } from "axios";
-import api from "../../api/axios";
-import type { PaginatedResponse } from "../../features/pagination/types";
-import { handleThunkError } from "../../utils/errors";
-import type { Post, PostComment } from "./types";
+import * as postService from "@/features/posts/api/post-service";
+import { getErrorMessage } from "@/shared/api/api-error";
+import type { PaginatedResponse, Post, PostComment } from "@/shared/api/types";
 
-export const fetchPosts = createAsyncThunk<
-  Post[],
-  void,
-  { rejectValue: string }
->("posts/fetchPosts", async (_, { rejectWithValue }) => {
-  try {
-    const { data } = await api.get<Post[]>("/posts/");
-    return data;
-  } catch (error) {
-    if (error instanceof AxiosError && error.response?.status === 404) {
-      return [];
-    }
-    return rejectWithValue(handleThunkError(error, "Erro ao buscar posts"));
-  }
-});
+/**
+ * Os thunks só orquestram: chamam o service, traduzem o erro e devolvem ao reducer.
+ * Nenhum deles conhece axios, URL ou formato de resposta — isso é do service.
+ *
+ * `fetchPosts` foi removido daqui. Era código morto (nenhum componente o despachava) e
+ * declarava `api.get<Post[]>("/posts/")` para um endpoint paginado, que devolve
+ * `{count, next, previous, results}` — um objeto no lugar de um array. Passava
+ * despercebido porque `api.get<T>` é asserção de tipo, não verificação.
+ */
+
+interface Pagina<T> {
+  page: PaginatedResponse<T>;
+  reset: boolean;
+}
 
 export const fetchFollowingPosts = createAsyncThunk<
-  {
-    results: Post[];
-    next: string | null;
-    isInitialLoad: boolean;
-  },
-  { nextUrl?: string | null } | void,
+  Pagina<Post>,
+  { cursor?: string | null } | void,
   { rejectValue: string }
 >("posts/fetchFollowingPosts", async (arg, { rejectWithValue }) => {
+  const cursor = arg && "cursor" in arg ? arg.cursor : null;
   try {
-    const nextUrl = arg && "nextUrl" in arg ? arg.nextUrl : undefined;
-    const endpoint = nextUrl ?? "/posts/following/";
-
-    const { data } = await api.get<PaginatedResponse<Post>>(endpoint);
-
-    return {
-      results: data.results,
-      next: data.next,
-      isInitialLoad: !nextUrl,
-    };
+    // `reset` vem de ter seguido ou não um cursor — o sinal real, e não uma dedução a
+    // partir do tamanho da lista atual.
+    return { page: await postService.fetchFeed(cursor), reset: !cursor };
   } catch (error) {
-    if (error instanceof AxiosError && error.response?.status === 404) {
-      return {
-        results: [],
-        next: null,
-        isInitialLoad: true,
-      };
-    }
-    return rejectWithValue(
-      handleThunkError(error, "Erro ao buscar posts dos seguidos")
-    );
+    return rejectWithValue(getErrorMessage(error));
   }
 });
 
-export const createPost = createAsyncThunk<
-  Post,
-  { text: string },
+export const fetchUserPosts = createAsyncThunk<
+  Pagina<Post>,
+  { username: string; cursor?: string | null },
   { rejectValue: string }
->("posts/createPost", async ({ text }, { rejectWithValue }) => {
+>("posts/fetchUserPosts", async ({ username, cursor }, { rejectWithValue }) => {
   try {
-    const { data } = await api.post<Post>("/posts/", { text });
-    return data;
+    // O cursor é novo. O thunk anterior desestruturava só `{ username }` e fixava o
+    // endpoint, então não havia como pedir a página 2: `nextUrl`, `hasMore` e `count`
+    // eram preenchidos no estado e inutilizáveis, e a timeline do perfil parava nos 10
+    // primeiros posts sem nada indicar que havia mais.
+    return { page: await postService.fetchUserPosts(username, cursor), reset: !cursor };
   } catch (error) {
-    return rejectWithValue(handleThunkError(error, "Erro ao criar post"));
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+export const createPost = createAsyncThunk<Post, { text: string }, { rejectValue: string }>(
+  "posts/createPost",
+  async ({ text }, { rejectWithValue }) => {
+    try {
+      return await postService.createPost(text);
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
+export const toggleLike = createAsyncThunk<Post, { postId: number }, { rejectValue: string }>(
+  "posts/toggleLike",
+  async ({ postId }, { rejectWithValue }) => {
+    try {
+      // O servidor devolve o post inteiro; o cliente substitui o item pelo que ele
+      // afirma, em vez de deduzir o novo estado a partir de uma mensagem de texto.
+      return await postService.toggleLike(postId);
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
+export const fetchComments = createAsyncThunk<
+  { postId: number } & Pagina<PostComment>,
+  { postId: number; cursor?: string | null },
+  { rejectValue: string }
+>("posts/fetchComments", async ({ postId, cursor }, { rejectWithValue }) => {
+  try {
+    return { postId, page: await postService.fetchComments(postId, cursor), reset: !cursor };
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
   }
 });
 
@@ -74,73 +91,8 @@ export const createComment = createAsyncThunk<
   { rejectValue: string }
 >("posts/createComment", async ({ postId, text }, { rejectWithValue }) => {
   try {
-    const { data } = await api.post<PostComment>(`/posts/${postId}/comment/`, {
-      text,
-    });
-    return data;
+    return await postService.createComment(postId, text);
   } catch (error) {
-    return rejectWithValue(
-      handleThunkError(error, "Erro ao enviar comentário")
-    );
-  }
-});
-
-export const toggleLike = createAsyncThunk<
-  {
-    postId: number;
-    is_liked: boolean;
-    likes_delta: number;
-    serverPost?: Post;
-  },
-  { postId: number },
-  { rejectValue: string }
->("posts/toggleLike", async ({ postId }, { rejectWithValue }) => {
-  try {
-    const { data } = await api.post(`/posts/${postId}/like/`);
-
-    if (
-      data &&
-      typeof data === "object" &&
-      "id" in data &&
-      "likes_count" in data
-    ) {
-      const serverPost = data as Post;
-      return {
-        postId,
-        is_liked: serverPost.is_liked,
-        likes_delta: 0,
-        serverPost,
-      };
-    }
-
-    const message: string = data?.message ?? "";
-    const is_liked = message === "Curtido";
-    const likes_delta = is_liked ? 1 : -1;
-
-    return { postId, is_liked, likes_delta };
-  } catch (error) {
-    return rejectWithValue(
-      handleThunkError(error, "Erro ao curtir/descurtir post")
-    );
-  }
-});
-
-export const fetchUserPosts = createAsyncThunk<
-  {
-    results: Post[];
-    count: number;
-    next: string | null;
-    previous: string | null;
-  },
-  { username: string; isInitialLoad?: boolean },
-  { rejectValue: string }
->("posts/fetchUserPosts", async ({ username }, { rejectWithValue }) => {
-  try {
-    const response = await api.get(`/posts/user/${username}/posts/`);
-    return response.data;
-  } catch (error) {
-    return rejectWithValue(
-      handleThunkError(error, "Erro ao carregar posts do usuário")
-    );
+    return rejectWithValue(getErrorMessage(error));
   }
 });

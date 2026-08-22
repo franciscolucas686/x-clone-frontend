@@ -1,7 +1,7 @@
 import { Heart, MessageCircle } from "lucide-react";
-import { toggleLike } from "../../features/posts/postThunks";
-import type { Post as PostType } from "../../features/posts/types";
-import { useAppDispatch, useAppSelector } from "../../hooks/useAppSelector";
+import { toggleLike } from "@/features/posts/postThunks";
+import type { Post as PostType } from "@/features/posts/types";
+import { useAppDispatch, useAppSelector } from "@/hooks/useAppSelector";
 import { Link } from "react-router-dom";
 
 type Props = {
@@ -20,9 +20,7 @@ export default function Post({ post, onCommentClick }: Props) {
   };
 
   const profileLink =
-    user?.username === post.user.username
-      ? "/profile"
-      : `/user/${post.user.username}`;
+    user?.username === post.user.username ? "/profile" : `/user/${post.user.username}`;
 
   return (
     <div className="p-4 border-b border-gray-200 hover:bg-gray-50">
@@ -50,6 +48,7 @@ export default function Post({ post, onCommentClick }: Props) {
                 e.stopPropagation();
                 onCommentClick?.();
               }}
+              aria-label={`Comentar (${post.comments_count})`}
               className="flex items-center gap-2 hover:text-blue-500 cursor-pointer"
             >
               <MessageCircle size={18} />
@@ -58,6 +57,8 @@ export default function Post({ post, onCommentClick }: Props) {
 
             <button
               onClick={handleLike}
+              aria-label={post.is_liked ? "Descurtir" : "Curtir"}
+              aria-pressed={post.is_liked}
               className={`flex items-center gap-2 ${
                 post.is_liked ? "text-red-500" : "hover:text-red-500"
               }`}

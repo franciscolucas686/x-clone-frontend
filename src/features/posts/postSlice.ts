@@ -1,122 +1,102 @@
 import { createSlice } from "@reduxjs/toolkit";
 import {
+  applyPage,
+  emptyList,
+  failLoading,
+  startLoading,
+  type PaginatedList,
+} from "@/shared/paginated-list";
+import type { Post, PostComment } from "@/shared/api/types";
+import {
   createComment,
   createPost,
+  fetchComments,
   fetchFollowingPosts,
-  fetchPosts,
   fetchUserPosts,
   toggleLike,
-} from "./postThunks";
-import type { Post } from "./types";
+} from "@/features/posts/postThunks";
 
 export interface PostState {
-  items: Post[];
-  nextUrl: string | null;
-  hasMore: boolean;
-
-  userPosts: {
-    items: Post[];
-    loading: boolean;
-    error: string | null;
-    nextUrl: string | null;
-    hasMore: boolean;
-    count: number;
-  };
-
-  loading: boolean;
+  /** Feed de quem o usuário segue. */
+  feed: PaginatedList<Post>;
+  /** Timeline do perfil aberto. */
+  userPosts: PaginatedList<Post>;
+  /** Comentários do post aberto no modal, indexados por post. */
+  comments: Record<number, PaginatedList<PostComment>>;
   creating: boolean;
-  commentingPostIds: number[];
   likingPostIds: number[];
   error: string | null;
 }
 
 export const initialState: PostState = {
-  items: [],
-  nextUrl: null,
-  hasMore: true,
-
-  userPosts: {
-    items: [],
-    loading: false,
-    error: null,
-    nextUrl: null,
-    hasMore: true,
-    count: 0,
-  },
-
-  loading: false,
+  feed: emptyList<Post>(),
+  userPosts: emptyList<Post>(),
+  comments: {},
   creating: false,
   likingPostIds: [],
-  commentingPostIds: [],
   error: null,
 };
+
+/**
+ * Aplica uma alteração ao mesmo post onde quer que ele esteja.
+ *
+ * O feed e a timeline do perfil guardam cópias independentes do mesmo post, então uma
+ * curtida precisa alcançar as duas. A função existia duplicada, definida de novo dentro
+ * de cada reducer que precisava dela.
+ */
+function emCadaLista(state: PostState, postId: number, aplicar: (post: Post) => void) {
+  for (const lista of [state.feed, state.userPosts]) {
+    const post = lista.items.find((p) => p.id === postId);
+    if (post) aplicar(post);
+  }
+}
 
 const postSlice = createSlice({
   name: "posts",
   initialState,
   reducers: {
     clearUserPosts(state) {
-      state.userPosts = {
-        items: [],
-        loading: false,
-        error: null,
-        nextUrl: null,
-        hasMore: true,
-        count: 0,
-      };
+      state.userPosts = emptyList<Post>();
     },
   },
 
   extraReducers: (builder) => {
     builder
-      .addCase(fetchPosts.pending, (state) => {
-        state.loading = true;
-        state.error = null;
+      .addCase(fetchFollowingPosts.pending, (state) => startLoading(state.feed))
+      .addCase(fetchFollowingPosts.fulfilled, (state, action) => {
+        applyPage(state.feed, action.payload.page, { reset: action.payload.reset });
       })
-      .addCase(fetchPosts.fulfilled, (state, action) => {
-        state.loading = false;
-        state.items = action.payload;
-      })
-      .addCase(fetchPosts.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload ?? "Erro ao buscar posts";
+      .addCase(fetchFollowingPosts.rejected, (state, action) => {
+        failLoading(state.feed, action.payload ?? "Erro ao carregar o feed.");
       });
 
     builder
-      .addCase(fetchFollowingPosts.pending, (state) => {
-        state.loading = true;
-        state.error = null;
+      .addCase(fetchUserPosts.pending, (state) => startLoading(state.userPosts))
+      .addCase(fetchUserPosts.fulfilled, (state, action) => {
+        applyPage(state.userPosts, action.payload.page, { reset: action.payload.reset });
       })
-      .addCase(fetchFollowingPosts.fulfilled, (state, action) => {
-        const { results, next, isInitialLoad } = action.payload;
-
-        state.loading = false;
-        state.nextUrl = next;
-
-        state.hasMore = next !== null;
-
-        if (isInitialLoad) {
-          state.items = results;
-        } else {
-          state.items.push(...results);
-        }
-      })
-      .addCase(fetchFollowingPosts.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload ?? "Erro ao carregar posts dos seguidos";
+      .addCase(fetchUserPosts.rejected, (state, action) => {
+        failLoading(state.userPosts, action.payload ?? "Erro ao carregar os posts.");
       });
 
     builder
       .addCase(createPost.pending, (state) => {
         state.creating = true;
+        state.error = null;
       })
       .addCase(createPost.fulfilled, (state, action) => {
         state.creating = false;
-        state.items.unshift(action.payload);
+        state.feed.items.unshift(action.payload);
+        // A timeline do perfil também recebe o post novo. Antes só o feed recebia,
+        // então publicar estando no próprio perfil não mostrava nada até recarregar.
+        if (state.userPosts.items.some((p) => p.user.id === action.payload.user.id)) {
+          state.userPosts.items.unshift(action.payload);
+          state.userPosts.count += 1;
+        }
       })
       .addCase(createPost.rejected, (state, action) => {
         state.creating = false;
-        state.error = action.payload ?? "Erro ao criar post";
+        state.error = action.payload ?? "Erro ao criar o post.";
       });
 
     builder
@@ -124,83 +104,47 @@ const postSlice = createSlice({
         state.likingPostIds.push(action.meta.arg.postId);
       })
       .addCase(toggleLike.fulfilled, (state, action) => {
-        const { postId, is_liked, likes_delta, serverPost } = action.payload;
-
-        const updateList = (list: Post[]) => {
-          const index = list.findIndex((p) => p.id === postId);
-          if (index === -1) return;
-
-          if (serverPost) {
-            list[index] = serverPost;
-          } else {
-            list[index].is_liked = is_liked;
-            list[index].likes_count += likes_delta;
-          }
-        };
-
-        updateList(state.items);
-        updateList(state.userPosts.items);
-
-        state.likingPostIds = state.likingPostIds.filter((id) => id !== postId);
+        const doServidor = action.payload;
+        emCadaLista(state, doServidor.id, (post) => {
+          post.is_liked = doServidor.is_liked;
+          post.likes_count = doServidor.likes_count;
+        });
+        state.likingPostIds = state.likingPostIds.filter((id) => id !== doServidor.id);
       })
       .addCase(toggleLike.rejected, (state, action) => {
-        const postId = action.meta.arg.postId;
-        state.likingPostIds = state.likingPostIds.filter((id) => id !== postId);
-        state.error = action.payload ?? "Erro ao curtir post";
+        state.likingPostIds = state.likingPostIds.filter((id) => id !== action.meta.arg.postId);
+        state.error = action.payload ?? "Erro ao curtir o post.";
       });
 
     builder
-      .addCase(createComment.pending, (state, action) => {
-        state.commentingPostIds.push(action.meta.arg.postId);
+      .addCase(fetchComments.pending, (state, action) => {
+        const { postId } = action.meta.arg;
+        state.comments[postId] ??= emptyList<PostComment>();
+        startLoading(state.comments[postId]);
       })
+      .addCase(fetchComments.fulfilled, (state, action) => {
+        const { postId, page, reset } = action.payload;
+        state.comments[postId] ??= emptyList<PostComment>();
+        applyPage(state.comments[postId], page, { reset });
+      })
+      .addCase(fetchComments.rejected, (state, action) => {
+        const { postId } = action.meta.arg;
+        state.comments[postId] ??= emptyList<PostComment>();
+        failLoading(state.comments[postId], action.payload ?? "Erro ao carregar comentários.");
+      });
+
+    builder
       .addCase(createComment.fulfilled, (state, action) => {
-        const newComment = action.payload;
-
-        state.commentingPostIds = state.commentingPostIds.filter(
-          (id) => id !== newComment.post
-        );
-
-        const updateList = (list: Post[]) => {
-          const post = list.find((p) => p.id === newComment.post);
-          if (!post) return;
-
-          post.comments.unshift(newComment);
+        const comentario = action.payload;
+        state.comments[comentario.post] ??= emptyList<PostComment>();
+        state.comments[comentario.post].items.unshift(comentario);
+        state.comments[comentario.post].count += 1;
+        emCadaLista(state, comentario.post, (post) => {
           post.comments_count += 1;
-        };
-
-        updateList(state.items);
-        updateList(state.userPosts.items);
+        });
       })
       .addCase(createComment.rejected, (state, action) => {
-        state.error =
-          typeof action.payload === "string"
-            ? action.payload
-            : "Erro ao criar comentário";
-      });
-
-    builder
-      .addCase(fetchUserPosts.pending, (state) => {
-        state.userPosts.loading = true;
-        state.userPosts.error = null;
-      })
-      .addCase(fetchUserPosts.fulfilled, (state, action) => {
-        const isInitialLoad = action.meta.arg.isInitialLoad ?? true;
-
-        state.userPosts.loading = false;
-        state.userPosts.items = isInitialLoad
-          ? action.payload.results
-          : [...state.userPosts.items, ...action.payload.results];
-
-        state.userPosts.nextUrl = action.payload.next;
-        state.userPosts.count = action.payload.count;
-        state.userPosts.hasMore = action.payload.next !== null;
-      })
-      .addCase(fetchUserPosts.rejected, (state, action) => {
-        state.userPosts.loading = false;
-        state.userPosts.error =
-          typeof action.payload === "string"
-            ? action.payload
-            : "Erro ao carregar posts do usuário";
+        state.error = action.payload ?? "Erro ao enviar o comentário.";
       });
   },
 });
