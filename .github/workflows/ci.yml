@@ -1,0 +1,39 @@
+name: CI
+
+# O frontend não tinha CI nenhum: o React nunca foi lintado, tipado nem testado antes de
+# ir para produção.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Lint, tipos, testes e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      # Exatamente os comandos que o desenvolvedor roda — nada inventado só para o CI.
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      # `build` inclui o `tsc -b`, então não há como publicar com erro de tipo.
+      - run: npm run build
