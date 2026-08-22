@@ -1,159 +1,159 @@
-import { Camera } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Camera, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { clearError, setError } from "../../features/auth/authSlice";
-import { updateProfile } from "../../features/auth/authThunks";
-import { fetchUserByUsername } from "../../features/users/userThunks";
-import { useAppDispatch, useAppSelector } from "../../hooks/useAppSelector";
-import { CloseIcon } from "../icons/CloseIcon";
-import ModalLayout from "./ModalLayout";
+import { useForm } from "react-hook-form";
+import { editProfileSchema, type EditProfileFormValues } from "@/features/auth/auth.schema";
+import { clearError } from "@/features/auth/authSlice";
+import { updateProfile } from "@/features/auth/authThunks";
+import { useAppDispatch, useAppSelector } from "@/hooks/useAppSelector";
+import { DEFAULT_AVATAR_URL } from "@/shared/config";
+import { Button } from "@/ui/Button";
+import { Field, Input } from "@/ui/Field";
+import { Modal } from "@/ui/Modal";
+
+/** `undefined` = não mexeu na foto; `File` = trocou; `null` = removeu. */
+type AlteracaoDeAvatar = File | null | undefined;
 
 export default function EditProfileModal({ onClose }: { onClose: () => void }) {
   const dispatch = useAppDispatch();
-  const { user, loading, error } = useAppSelector((state) => state.auth);
+  const { user, submitting, error } = useAppSelector((s) => s.auth);
 
-  const defaultAvatar =
-    "https://res.cloudinary.com/dh5rxxtqe/image/upload/v1763632324/xclone/avatars/default.png";
-  const currentAvatar = user?.avatar_url || defaultAvatar;
+  const avatarAtual = user?.avatar_url || DEFAULT_AVATAR_URL;
+  const [avatar, setAvatar] = useState<AlteracaoDeAvatar>(undefined);
+  const [preview, setPreview] = useState(avatarAtual);
 
-  const [form, setForm] = useState({
-    name: user?.name ?? "",
-    username: user?.username ?? "",
-    password: "",
-    confirm_password: "",
-    avatar: null as File | null,
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<EditProfileFormValues>({
+    resolver: zodResolver(editProfileSchema),
+    defaultValues: {
+      name: user?.name ?? "",
+      username: user?.username ?? "",
+      password: "",
+      confirmPassword: "",
+    },
   });
-
-  const [previewUrl, setPreviewUrl] = useState<string>(currentAvatar);
 
   useEffect(() => {
     dispatch(clearError());
   }, [dispatch]);
 
   useEffect(() => {
-    if (form.avatar) {
-      const objectUrl = URL.createObjectURL(form.avatar);
-      setPreviewUrl(objectUrl);
-      return () => URL.revokeObjectURL(objectUrl);
-    } else {
-      setPreviewUrl(currentAvatar);
-    }
-  }, [form.avatar, currentAvatar]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) setForm({ ...form, avatar: file });
-  };
-
-  const handleRemoveAvatar = () => {
-    setForm({ ...form, avatar: null });
-    setPreviewUrl(currentAvatar);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    dispatch(clearError());
-
-    if (form.password && form.password !== form.confirm_password) {
-      dispatch(setError("As senhas não coincidem."));
+    if (!(avatar instanceof File)) {
+      setPreview(avatar === null ? DEFAULT_AVATAR_URL : avatarAtual);
       return;
     }
+    const url = URL.createObjectURL(avatar);
+    setPreview(url);
+    // Revogar a URL é o que impede o vazamento de memória a cada troca de foto.
+    return () => URL.revokeObjectURL(url);
+  }, [avatar, avatarAtual]);
 
-    const result = await dispatch(updateProfile(form));
-    if (updateProfile.fulfilled.match(result)) {
-      const updatedUser = result.payload;
-      dispatch(fetchUserByUsername(updatedUser.username));
-      onClose();
-    }
-  };
+  const salvar = handleSubmit(async (dados) => {
+    const resultado = await dispatch(
+      updateProfile({
+        name: dados.name,
+        username: dados.username,
+        // Só envia a senha se ela foi preenchida — vazio significa "não trocar".
+        ...(dados.password
+          ? { password: dados.password, confirm_password: dados.confirmPassword }
+          : {}),
+        // `undefined` é omitido pelo service; `null` vira a instrução de remover.
+        avatar,
+      }),
+    );
+
+    // Sem o segundo GET /profile/ que existia aqui: a resposta do PATCH já traz o
+    // usuário completo, e o reducer de updateProfile.fulfilled já o gravou. Eram duas
+    // requisições por salvamento, a segunda buscando o que a primeira acabara de trazer.
+    if (updateProfile.fulfilled.match(resultado)) onClose();
+  });
 
   return (
-    <ModalLayout onClose={onClose} className="max-w-[600px]">
-      <h2 className="text-xl font-bold mb-4 text-center cursor-default">
-        Editar perfil
-      </h2>
+    <Modal onClose={onClose} title="Editar perfil" className="max-w-[600px]">
+      <form onSubmit={salvar} className="flex flex-col gap-4 p-2" noValidate>
+        <h2 className="text-xl font-bold">Editar perfil</h2>
 
-      <div className="relative w-48 h-48 m-auto rounded-full">
-        <img
-          src={previewUrl}
-          alt={form.name || "Foto de perfil"}
-          className="w-full h-full object-cover border-4 border-white bg-gray-100 rounded-full overflow-hidden"
-        />
-        <label className="absolute inset-0 flex items-center justify-center rounded-full bg-black/30 hover:bg-black/50 duration-200 ease-in-out z-10">
-          <Camera size={40} className="text-white cursor-pointer" />
-          <input
-            type="file"
-            className="hidden"
-            accept="image/*"
-            onChange={handleFileChange}
+        <div className="flex items-center gap-4">
+          <img
+            src={preview}
+            alt="Prévia da foto de perfil"
+            className="h-20 w-20 rounded-full object-cover"
           />
-        </label>
-
-        {form.avatar && (
-          <button
-            type="button"
-            onClick={handleRemoveAvatar}
-            className="absolute top-2 right-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition z-20"
-            title="Remover imagem"
-          >
-            <CloseIcon className="!hover:text-current !transition-none" />
-          </button>
-        )}
-      </div>
-
-      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-6 px-2">
-        <div>
-          <label className="block text-gray-700">Nome</label>
-          <input
-            type="text"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full p-2 border border-gray-200 rounded"
-          />
+          <div className="flex gap-2">
+            <label className="flex cursor-pointer items-center gap-2 rounded-full bg-gray-200 px-3 py-1.5 text-sm font-semibold hover:bg-gray-300">
+              <Camera size={16} />
+              Trocar foto
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={(e) => {
+                  const arquivo = e.target.files?.[0];
+                  if (arquivo) setAvatar(arquivo);
+                }}
+              />
+            </label>
+            {preview !== DEFAULT_AVATAR_URL && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setAvatar(null)}
+                aria-label="Remover foto"
+              >
+                <Trash2 size={16} />
+              </Button>
+            )}
+          </div>
         </div>
 
-        <div>
-          <label className="block text-gray-700">Usuário</label>
-          <input
-            type="text"
-            value={form.username}
-            onChange={(e) => setForm({ ...form, username: e.target.value })}
-            className="w-full p-2 border border-gray-200 rounded"
-          />
-        </div>
+        <Field label="Nome" error={errors.name?.message}>
+          {(props) => <Input {...props} {...register("name")} autoComplete="name" />}
+        </Field>
 
-        <div>
-          <label className="block text-gray-700">Nova Senha</label>
-          <input
-            type="password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            className="w-full p-2 border border-gray-200 rounded"
-          />
-        </div>
+        <Field label="Nome de usuário" error={errors.username?.message}>
+          {(props) => <Input {...props} {...register("username")} autoComplete="username" />}
+        </Field>
 
-        <div>
-          <label className="block text-gray-700">Confirmar Nova Senha</label>
-          <input
-            type="password"
-            value={form.confirm_password}
-            onChange={(e) =>
-              setForm({ ...form, confirm_password: e.target.value })
-            }
-            className="w-full p-2 border border-gray-200 rounded"
-          />
-        </div>
-
-        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn self-end bg-black text-white px-6 py-2 rounded transition hover:bg-gray-800"
+        <Field
+          label="Nova senha"
+          error={errors.password?.message}
+          hint="Deixe em branco para manter a senha atual"
         >
-          {loading ? "Salvando..." : "Salvar"}
-        </button>
+          {(props) => (
+            <Input
+              {...props}
+              {...register("password")}
+              type="password"
+              autoComplete="new-password"
+            />
+          )}
+        </Field>
+
+        <Field label="Confirmar nova senha" error={errors.confirmPassword?.message}>
+          {(props) => (
+            <Input
+              {...props}
+              {...register("confirmPassword")}
+              type="password"
+              autoComplete="new-password"
+            />
+          )}
+        </Field>
+
+        {error && (
+          <p role="alert" className="text-center text-sm text-red-500">
+            {error}
+          </p>
+        )}
+
+        <Button type="submit" isLoading={submitting} loadingText="Salvando..." className="self-end">
+          Salvar
+        </Button>
       </form>
-    </ModalLayout>
+    </Modal>
   );
 }

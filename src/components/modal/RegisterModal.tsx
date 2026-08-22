@@ -1,112 +1,99 @@
-import { useEffect, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { clearError } from "../../features/auth/authSlice";
-import { registerUser } from "../../features/auth/authThunks";
-import { useAppDispatch, useAppSelector } from "../../hooks/useAppSelector";
-import { Xlogo } from "../icons/Xlogo";
-import ModalLayout from "./ModalLayout";
+import { registerSchema, type RegisterFormValues } from "@/features/auth/auth.schema";
+import { clearError } from "@/features/auth/authSlice";
+import { registerUser } from "@/features/auth/authThunks";
+import { useAppDispatch, useAppSelector } from "@/hooks/useAppSelector";
+import { Xlogo } from "@/components/icons/Xlogo";
+import { Button } from "@/ui/Button";
+import { Field, Input } from "@/ui/Field";
+import { Modal } from "@/ui/Modal";
 
-interface RegisterModalProps {
-  onClose: () => void;
-}
-
-export default function RegisterModal({ onClose }: RegisterModalProps) {
+export default function RegisterModal({ onClose }: { onClose: () => void }) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { submitting, error } = useAppSelector((s) => s.auth);
 
-  const { loading, error } = useAppSelector((state) => state.auth);
-
-  const [form, setForm] = useState({
-    username: "",
-    name: "",
-    password: "",
-    confirmPassword: "",
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { username: "", name: "", password: "", confirmPassword: "" },
   });
-  const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
     dispatch(clearError());
   }, [dispatch]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLocalError(null);
-
-    if (form.password !== form.confirmPassword) {
-      setLocalError("As senhas não coincidem!");
-      return;
-    }
-
-    const resultAction = await dispatch(registerUser(form));
-    if (registerUser.rejected.match(resultAction) && resultAction.payload) {
-      setLocalError(resultAction.payload);
-    }
-
-    if (registerUser.fulfilled.match(resultAction)) {
+  const criarConta = handleSubmit(async (dados) => {
+    const resultado = await dispatch(
+      registerUser({
+        username: dados.username,
+        name: dados.name ?? "",
+        password: dados.password,
+        confirmPassword: dados.confirmPassword,
+      }),
+    );
+    if (registerUser.fulfilled.match(resultado)) {
       onClose();
       navigate("/feed");
     }
-  };
+  });
 
   return (
-    <ModalLayout onClose={onClose} className="w-[400px]">
+    <Modal onClose={onClose} title="Criar sua conta" className="max-w-[400px]">
       <Xlogo />
-      <h2 className="text-2xl mb-6 text-center cursor-default">
-        Criar sua conta
-      </h2>
+      <h2 className="my-6 text-center text-xl">Criar sua conta</h2>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-        <div className="flex items-center border rounded focus-within:border-blue-500 outline-none box-border">
-          <span className="pl-3 text-gray-500 select-none">@</span>
-          <input
-            type="text"
-            placeholder="nome_do_usuario"
-            value={form.username}
-            onChange={(e) => setForm({ ...form, username: e.target.value })}
-            className="flex-1 py-2 outline-none bg-white"
-            required
-          />
-        </div>
+      <form onSubmit={criarConta} className="flex flex-col gap-4" noValidate>
+        <Field label="Nome de usuário" error={errors.username?.message}>
+          {(props) => <Input {...props} {...register("username")} autoComplete="username" />}
+        </Field>
 
-        <input
-          type="text"
-          placeholder="Nome"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="p-2 border rounded focus:border-blue-500 outline-none box-border"
-          required
-        />
+        <Field label="Nome" error={errors.name?.message} hint="Opcional">
+          {(props) => <Input {...props} {...register("name")} autoComplete="name" />}
+        </Field>
 
-        <input
-          type="password"
-          placeholder="Senha"
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-          className="p-2 border rounded focus:border-blue-500 outline-none box-border"
-          required
-        />
+        <Field
+          label="Senha"
+          error={errors.password?.message}
+          hint="Mínimo de 8 caracteres, e não só números"
+        >
+          {(props) => (
+            <Input
+              {...props}
+              {...register("password")}
+              type="password"
+              autoComplete="new-password"
+            />
+          )}
+        </Field>
 
-        <input
-          type="password"
-          placeholder="Confirmar senha"
-          value={form.confirmPassword}
-          onChange={(e) =>
-            setForm({ ...form, confirmPassword: e.target.value })
-          }
-          className="p-2 border rounded focus:border-blue-500 outline-none box-border"
-          required
-        />
+        <Field label="Confirmar senha" error={errors.confirmPassword?.message}>
+          {(props) => (
+            <Input
+              {...props}
+              {...register("confirmPassword")}
+              type="password"
+              autoComplete="new-password"
+            />
+          )}
+        </Field>
 
-        {(error || localError) && (
-          <p className="text-red-500 text-sm text-center">
-            {error || localError}
+        {error && (
+          <p role="alert" className="text-center text-sm text-red-500">
+            {error}
           </p>
         )}
 
-        <button type="submit" disabled={loading} className="btn">
-          {loading ? "Registrando..." : "Cadastrar"}
-        </button>
+        <Button type="submit" isLoading={submitting} loadingText="Criando...">
+          Criar conta
+        </Button>
       </form>
-    </ModalLayout>
+    </Modal>
   );
 }

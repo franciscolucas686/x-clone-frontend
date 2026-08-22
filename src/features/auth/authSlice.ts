@@ -1,26 +1,32 @@
-import type { PayloadAction } from "@reduxjs/toolkit";
-import { createSlice } from "@reduxjs/toolkit";
-import type { RootState } from "../../app/store";
-import type { User } from "../users/types";
-import { fetchUserByUsername } from "../users/userThunks";
-import {
-  loginUser,
-  logoutUser,
-  registerUser,
-  restoreUser,
-  updateProfile,
-} from "./authThunks";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { RootState } from "@/app/store";
+import type { User } from "@/shared/api/types";
+import { fetchUserByUsername } from "@/features/users/userThunks";
+import { loginUser, registerUser, restoreUser, updateProfile } from "@/features/auth/authThunks";
+
+/**
+ * Estado da sessão.
+ *
+ * `checking` é o estado que faltava. Sem ele, `PrivateRoute` não tinha como distinguir
+ * "ainda não sei se há sessão" de "não há sessão", e usava um `setTimeout(2000)` fixo
+ * para dar tempo ao `/profile/` responder: toda navegação para uma rota privada custava
+ * dois segundos, mesmo com a sessão já conhecida, e se a requisição demorasse mais que
+ * isso o usuário era mandado para a tela de login com sessão válida.
+ */
+type Status = "checking" | "authenticated" | "anonymous";
+
 interface AuthState {
   user: User | null;
-  token: string | null;
-  loading: boolean;
+  status: Status;
+  /** Requisição de login/cadastro/atualização em voo. */
+  submitting: boolean;
   error: string | null;
 }
 
 const initialState: AuthState = {
   user: null,
-  token: localStorage.getItem("access") || null,
-  loading: false,
+  status: "checking",
+  submitting: false,
   error: null,
 };
 
@@ -34,79 +40,76 @@ const authSlice = createSlice({
     setError: (state, action: PayloadAction<string>) => {
       state.error = action.payload;
     },
+    /**
+     * Disparada pelo api-client quando um 401 chega fora das rotas de credencial.
+     *
+     * O interceptor não navega mais sozinho: avisa, o estado muda, e o PrivateRoute
+     * reage. Antes ele fazia `window.location.href = "/"` — um reload completo, que
+     * descartava o store e engolia a mensagem que o próprio thunk acabara de gravar.
+     *
+     * O corpo é vazio: o rootReducer em app/store.ts intercepta esta ação e zera todos
+     * os slices.
+     */
+    sessionExpired: () => {},
   },
   extraReducers: (builder) => {
     builder
-      .addCase(logoutUser.fulfilled, (state) => {
+      .addCase(restoreUser.pending, (state) => {
+        state.status = "checking";
+      })
+      .addCase(restoreUser.fulfilled, (state, action) => {
+        state.user = action.payload;
+        state.status = action.payload ? "authenticated" : "anonymous";
+      })
+      .addCase(restoreUser.rejected, (state) => {
         state.user = null;
-        state.token = null;
-        state.loading = false;
-        state.error = null;
-      })
-      .addCase(loginUser.pending, (state) => {
-        state.loading = true;
-      })
-      .addCase(
-        loginUser.fulfilled,
-        (state, action: PayloadAction<{ token: string; user: User }>) => {
-          state.loading = false;
-          state.token = action.payload.token;
-          state.user = action.payload.user;
-        }
-      )
-      .addCase(loginUser.rejected, (state, action) => {
-        state.loading = false;
-        state.error =
-          (action.payload as string) ||
-          action.error.message ||
-          "Erro ao fazer login.";
-      })
-      .addCase(registerUser.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(
-        registerUser.fulfilled,
-        (state, action: PayloadAction<{ token: string; user: User }>) => {
-          state.loading = false;
-          state.user = action.payload.user;
-          state.token = action.payload.token;
-        }
-      )
-      .addCase(registerUser.rejected, (state, action) => {
-        state.loading = false;
-        state.error =
-          (action.payload as string) ||
-          action.error.message ||
-          "Erro desconhecido ao registrar usuário.";
-      })
-      .addCase(
-        restoreUser.fulfilled,
-        (state, action: PayloadAction<User | null>) => {
+        state.status = "anonymous";
+      });
+
+    for (const thunk of [loginUser, registerUser]) {
+      builder
+        .addCase(thunk.pending, (state) => {
+          state.submitting = true;
+          state.error = null;
+        })
+        .addCase(thunk.fulfilled, (state, action) => {
+          state.submitting = false;
           state.user = action.payload;
-        }
-      )
+          state.status = "authenticated";
+        })
+        .addCase(thunk.rejected, (state, action) => {
+          state.submitting = false;
+          state.error = action.payload ?? "Não foi possível continuar.";
+        });
+    }
+
+    builder
       .addCase(updateProfile.pending, (state) => {
-        state.loading = true;
+        state.submitting = true;
         state.error = null;
       })
       .addCase(updateProfile.fulfilled, (state, action) => {
-        state.loading = false;
+        state.submitting = false;
         state.user = action.payload;
       })
       .addCase(updateProfile.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-      .addCase(fetchUserByUsername.fulfilled, (state, action) => {
-        if (state.user && state.user.username === action.payload.username) {
-          state.user = action.payload;
-        }
+        state.submitting = false;
+        state.error = action.payload ?? "Não foi possível salvar o perfil.";
       });
+
+    builder.addCase(fetchUserByUsername.fulfilled, (state, action) => {
+      // Mantém o usuário da sessão em dia quando o perfil dele é recarregado por outra
+      // tela. É acoplamento entre features, mas o alternativo — cada tela lembrar de
+      // sincronizar — é pior.
+      if (state.user && state.user.username === action.payload.username) {
+        state.user = action.payload;
+      }
+    });
   },
 });
 
-export const { setError, clearError} = authSlice.actions;
+export const { setError, clearError, sessionExpired } = authSlice.actions;
 export default authSlice.reducer;
 
-export const selectAuth = (state: RootState) => state.auth;
+export const selectAuthUser = (state: RootState) => state.auth.user;
+export const selectAuthStatus = (state: RootState) => state.auth.status;

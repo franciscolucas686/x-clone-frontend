@@ -1,66 +1,74 @@
-import { useEffect, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { clearError } from "../../features/auth/authSlice";
-import { loginUser } from "../../features/auth/authThunks";
-import { useAppDispatch, useAppSelector } from "../../hooks/useAppSelector";
-import { Xlogo } from "../icons/Xlogo";
-import ModalLayout from "./ModalLayout";
+import { loginSchema, type LoginFormValues } from "@/features/auth/auth.schema";
+import { clearError } from "@/features/auth/authSlice";
+import { loginUser } from "@/features/auth/authThunks";
+import { useAppDispatch, useAppSelector } from "@/hooks/useAppSelector";
+import { Xlogo } from "@/components/icons/Xlogo";
+import { Button } from "@/ui/Button";
+import { Field, Input } from "@/ui/Field";
+import { Modal } from "@/ui/Modal";
 
-interface LoginModalProps {
-  onClose: () => void;
-}
-
-export default function LoginModal({ onClose }: LoginModalProps) {
+export default function LoginModal({ onClose }: { onClose: () => void }) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { loading, error } = useAppSelector((state) => state.auth);
-  const [form, setForm] = useState({ username: "", password: "" });
+  const { submitting, error } = useAppSelector((s) => s.auth);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { username: "", password: "" },
+  });
 
   useEffect(() => {
     dispatch(clearError());
   }, [dispatch]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const resultAction = await dispatch(loginUser(form));
-
-    if (loginUser.fulfilled.match(resultAction)) {
+  const entrar = handleSubmit(async (dados) => {
+    const resultado = await dispatch(loginUser(dados));
+    if (loginUser.fulfilled.match(resultado)) {
       onClose();
       navigate("/feed");
     }
-  };
+  });
 
   return (
-    <ModalLayout onClose={onClose} className="w-[400px]">
+    <Modal onClose={onClose} title="Entrar no X" className="max-w-[400px]">
       <Xlogo />
-      <h2 className="text-xl my-6 text-center cursor-default">Entrar no X</h2>
+      <h2 className="my-6 text-center text-xl">Entrar no X</h2>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-        <div className="flex items-center border rounded focus-within:border-blue-500 outline-none  box-border">
-          <span className="pl-3 text-gray-500 select-none">@</span>
-          <input
-            type="text"
-            placeholder="nome_do_usuario"
-            value={form.username}
-            onChange={(e) => setForm({ ...form, username: e.target.value })}
-            className="flex-1 py-2 outline-none bg-white"
-            required
-          />
-        </div>
+      <form onSubmit={entrar} className="flex flex-col gap-5" noValidate>
+        <Field label="Nome de usuário" error={errors.username?.message}>
+          {(props) => <Input {...props} {...register("username")} autoComplete="username" />}
+        </Field>
 
-        <input
-          type="password"
-          placeholder="Senha"
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-          className="p-2 border rounded focus:border-blue-500 outline-none box-border"
-          required
-        />
-        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-        <button className="btn" type="submit" disabled={loading}>
-          {loading ? "Entrando..." : "Login"}
-        </button>
+        <Field label="Senha" error={errors.password?.message}>
+          {(props) => (
+            <Input
+              {...props}
+              {...register("password")}
+              type="password"
+              autoComplete="current-password"
+            />
+          )}
+        </Field>
+
+        {/* Erro do servidor, já traduzido pelo code em shared/api/error-code-map.ts. */}
+        {error && (
+          <p role="alert" className="text-center text-sm text-red-500">
+            {error}
+          </p>
+        )}
+
+        <Button type="submit" isLoading={submitting} loadingText="Entrando...">
+          Login
+        </Button>
       </form>
-    </ModalLayout>
+    </Modal>
   );
 }

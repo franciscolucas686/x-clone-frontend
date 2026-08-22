@@ -1,120 +1,85 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import api from "../../api/axios";
-import { handleThunkError } from "../../utils/errors";
-import type { User } from "../users/types";
+import * as authService from "@/features/auth/api/auth-service";
+import type { UpdateProfilePayload } from "@/features/auth/api/auth-service";
+import { getErrorMessage } from "@/shared/api/api-error";
+import { clearToken, getToken, setToken } from "@/shared/api/auth-storage";
+import type { User } from "@/shared/api/types";
 
-interface LoginCredentials {
-  username: string;
-  password: string;
-}
-
-interface RegisterCredentials {
-  username: string;
-  name: string;
-  password: string;
-  confirmPassword: string;
-}
-
-interface LoginResponse {
-  token: string;
-  user: User;
-}
-
-export interface UpdateProfilePayload {
-  name?: string;
-  username?: string;
-  password?: string;
-  confirm_password?: string;
-  avatar?: File | null;
-}
-
-export const logoutUser = createAsyncThunk("auth/logoutUser", async () => {
-  localStorage.removeItem("access");
-  return null;
-});
+export type { UpdateProfilePayload };
 
 export const loginUser = createAsyncThunk<
-  LoginResponse,
-  LoginCredentials,
+  User,
+  { username: string; password: string },
   { rejectValue: string }
->("auth/loginUser", async (credentials, { rejectWithValue }) => {
+>("auth/loginUser", async (credenciais, { rejectWithValue }) => {
   try {
-    const res = await api.post("/token/", credentials);
-    const token = res.data.access as string;
-
-    localStorage.setItem("access", token);
-
-    const userRes = await api.get<User>("/profile/");
-    return { token, user: userRes.data };
-  } catch (err) {
-    return rejectWithValue(
-      handleThunkError(err, "Falha ao fazer login. Tente novamente.")
-    );
+    // Duas idas ao servidor porque `/token/` devolve só os tokens, sem o usuário. É uma
+    // limitação do contrato do simplejwt, e está anotada como próximo passo no README.
+    const { access } = await authService.obtainToken(credenciais);
+    setToken(access);
+    return await authService.fetchProfile();
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
   }
 });
 
 export const registerUser = createAsyncThunk<
-  LoginResponse,
-  RegisterCredentials,
+  User,
+  { username: string; name: string; password: string; confirmPassword: string },
   { rejectValue: string }
->("auth/registerUser", async (credentials, { rejectWithValue }) => {
+>("auth/registerUser", async (dados, { rejectWithValue }) => {
   try {
-    await api.post("/register/", {
-      username: credentials.username,
-      name: credentials.name,
-      password: credentials.password,
-      confirm_password: credentials.confirmPassword,
+    await authService.register({
+      username: dados.username,
+      name: dados.name,
+      password: dados.password,
+      confirm_password: dados.confirmPassword,
     });
-
-    const loginRes = await api.post("/token/", {
-      username: credentials.username,
-      password: credentials.password,
+    const { access } = await authService.obtainToken({
+      username: dados.username,
+      password: dados.password,
     });
-
-    const token = loginRes.data.access as string;
-    localStorage.setItem("access", token);
-
-    const userRes = await api.get("/profile/");
-
-    return { token, user: userRes.data } as LoginResponse;
-  } catch (err) {
-    return rejectWithValue(handleThunkError(err, "Erro ao registrar usuário."));
+    setToken(access);
+    return await authService.fetchProfile();
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
   }
 });
 
-export const restoreUser = createAsyncThunk<User | null>(
+export const logoutUser = createAsyncThunk("auth/logoutUser", async () => {
+  clearToken();
+  return null;
+});
+
+/**
+ * Restaura a sessão no boot do app.
+ *
+ * Os três casos deste thunk é que alimentam o `status` do slice. Antes ele não tinha
+ * `.pending` nem `.rejected`, então `auth.loading` nunca ficava `true` durante o boot —
+ * e o PrivateRoute usava `setTimeout(2000)` como substituto.
+ */
+export const restoreUser = createAsyncThunk<User | null, void, { rejectValue: string }>(
   "auth/restoreUser",
-  async () => {
-    const token = localStorage.getItem("access");
-    if (!token) return null;
-
-    const res = await api.get("/profile/");
-
-    return res.data;
-  }
+  async (_, { rejectWithValue }) => {
+    if (!getToken()) return null;
+    try {
+      return await authService.fetchProfile();
+    } catch (error) {
+      // Token inválido ou expirado: descarta e segue como anônimo. Sem o try/catch, a
+      // rejeição não era tratada em lugar nenhum.
+      clearToken();
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
 );
 
-export const updateProfile = createAsyncThunk<
-  User,
-  UpdateProfilePayload,
-  { rejectValue: string }
->("auth/updateProfile", async (data, { rejectWithValue }) => {
-  try {
-    const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== "") {
-        formData.append(key, value instanceof File ? value : String(value));
-      }
-    });
-
-    const res = await api.patch<User>("/profile/", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-
-    return res.data;
-  } catch (err) {
-    return rejectWithValue(
-      handleThunkError(err, "Erro ao atualizar o perfil.")
-    );
-  }
-});
+export const updateProfile = createAsyncThunk<User, UpdateProfilePayload, { rejectValue: string }>(
+  "auth/updateProfile",
+  async (dados, { rejectWithValue }) => {
+    try {
+      return await authService.updateProfile(dados);
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
