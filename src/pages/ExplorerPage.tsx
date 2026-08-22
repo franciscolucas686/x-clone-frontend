@@ -1,84 +1,50 @@
-import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import FollowButton from "../components/button/FollowButton";
-import { Spinner } from "../components/spinner/Spinner";
-import { fetchUsers } from "../features/users/userThunks";
-import { useAppDispatch, useAppSelector } from "../hooks/useAppSelector";
+import { UserList } from "@/features/users/components/UserList";
+import { fetchUsers } from "@/features/users/userThunks";
+import { useAppDispatch, useAppSelector } from "@/hooks/useAppSelector";
+import { Input } from "@/ui/Field";
 
+/** Busca de usuários. */
 export default function ExplorerPage() {
   const dispatch = useAppDispatch();
-  const { list: users, loading } = useAppSelector((state) => state.users);
-  const [search, setSearch] = useState("");
-  const [localLoading, setLocalLoading] = useState(true);
+  const list = useAppSelector((s) => s.users.list);
+  const [termo, setTermo] = useState("");
 
   useEffect(() => {
-    dispatch(fetchUsers()).finally(() => setLocalLoading(false));
-  }, [dispatch]);
+    // Debounce: sem ele, cada tecla dispara uma requisição — e o backend agora tem
+    // limite por IP, então digitar rápido gastaria a cota à toa.
+    const id = setTimeout(() => {
+      dispatch(fetchUsers({ search: termo }));
+    }, 300);
+    return () => clearTimeout(id);
+  }, [termo, dispatch]);
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.name.toLowerCase().includes(search.toLowerCase()) ||
-      user.username.toLowerCase().includes(search.toLowerCase())
-  );
+  const carregarMais = () => {
+    if (!list.loading && list.next) dispatch(fetchUsers({ search: termo, cursor: list.next }));
+  };
 
   return (
-    <div className="mx-auto p-4">
-      <div className="relative mb-4">
-        <Search
-          size={20}
-          className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-        />
-        <input
-          type="text"
-          placeholder="Buscar pessoas"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full border border-gray-300 rounded-full py-2 pl-10 focus:ring focus:ring-blue-200 outline-none"
-        />
-      </div>
+    <div className="flex flex-col gap-4 p-4">
+      <h1 className="text-xl font-bold">Explorar</h1>
 
-      <div className="space-y-3">
-        {loading || localLoading ? (
-          <div className="flex items-center justify-center h-[60vh]">
-            <Spinner size={40} color="border-t-blue-500" />
-          </div>
-        ) : (
-          filteredUsers.map((user) => (
-            <div
-              key={user.id}
-              className="flex items-center justify-between p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition"
-            >
-              <div className="flex items-center gap-3">
-                <img
-                  src={user.avatar_url}
-                  alt={user.username}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-                <div>
-                  <Link
-                    to={`/user/${user.username}`}
-                    className="font-semibold text-gray-800 flex"
-                  >
-                    {user.name}
-                  </Link>
-                  <Link
-                    to={`/user/${user.username}`}
-                    className="text-gray-500 text-sm"
-                  >
-                    @{user.username}
-                  </Link>
-                </div>
-              </div>
+      <Input
+        type="search"
+        value={termo}
+        onChange={(e) => setTermo(e.target.value)}
+        placeholder="Buscar por nome ou @usuário"
+        aria-label="Buscar por nome ou usuário"
+      />
 
-              <FollowButton
-                userId={user.id}
-                isFollowing={user.is_following ?? false}
-              />
-            </div>
-          ))
-        )}
-      </div>
+      {/*
+        A busca acontece no servidor (?search=). Antes o filtro era `users.filter(...)`
+        no cliente, sobre a página já carregada — e como a página tem 10 itens, buscar
+        significava procurar entre os 10 primeiros usuários do sistema.
+      */}
+      <UserList
+        list={list}
+        onLoadMore={carregarMais}
+        emptyText={termo ? `Nenhum usuário encontrado para "${termo}"` : "Nenhum usuário por aqui"}
+      />
     </div>
   );
 }

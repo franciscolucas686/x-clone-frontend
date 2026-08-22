@@ -1,183 +1,53 @@
-import { ArrowLeft } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import CommentModal from "../components/modal/CommentModal";
-import EditProfileModal from "../components/modal/EditProfileModal";
-import { Spinner } from "../components/spinner/Spinner";
-import { clearUserPosts } from "../features/posts/postSlice";
-import { fetchUserPosts } from "../features/posts/postThunks";
-import { fetchUserByUsername } from "../features/users/userThunks";
-import { useAppDispatch, useAppSelector } from "../hooks/useAppSelector";
-import { formatJoinedDate } from "../utils/date";
+import { useState } from "react";
+import EditProfileModal from "@/components/modal/EditProfileModal";
+import CommentModal from "@/components/modal/CommentModal";
+import { PostList } from "@/features/posts/components/PostList";
+import { ProfileHeader } from "@/features/users/components/ProfileHeader";
+import { useProfile } from "@/features/users/hooks/useProfile";
+import { useAppSelector } from "@/hooks/useAppSelector";
+import { Button } from "@/ui/Button";
+import { Spinner } from "@/ui/Spinner";
 
-import Post from "../components/feed/Post";
+/** Perfil do usuário autenticado. */
+export default function ProfilePage() {
+  const usuarioLogado = useAppSelector((s) => s.auth.user);
+  const { user, loading, posts, carregarMaisPosts } = useProfile(usuarioLogado?.username);
 
-export default function Profile() {
-  const dispatch = useAppDispatch();
-  const navigate = useNavigate();
-  const [showEdit, setShowEdit] = useState(false);
+  const [editando, setEditando] = useState(false);
+  const [postComentado, setPostComentado] = useState<number | null>(null);
 
-  const { user } = useAppSelector((state) => state.auth);
-  const { selectedUser } = useAppSelector((state) => state.users);
-
-  const { items: userPosts, loading: postsLoading } = useAppSelector(
-    (state) => state.posts.userPosts
-  );
-
-  const [localLoading, setLocalLoading] = useState(true);
-
-  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setLocalLoading(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!user?.username) return;
-
-    const fetchData = async () => {
-      dispatch(clearUserPosts());
-      try {
-        const userResult = await dispatch(
-          fetchUserByUsername(user.username)
-        ).unwrap();
-        if (userResult?.username) {
-          await dispatch(
-            fetchUserPosts({
-              username: userResult.username,
-              isInitialLoad: true,
-            })
-          ).unwrap();
-        }
-      } catch (error) {
-        console.error("Erro ao carregar perfil:", error);
-      }
-    };
-
-    fetchData();
-  }, [user?.username, dispatch]);
-
-  if (localLoading || !selectedUser) {
+  if (loading || !user) {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
+      <div className="flex h-[60vh] items-center justify-center">
         <Spinner size={40} color="border-t-blue-500" />
       </div>
     );
   }
+
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center">
-        <button onClick={() => navigate(-1)}>
-          <div className="m-2 rounded-full hover:bg-gray-100 transition">
-            <ArrowLeft size={40} className="p-2" />
-          </div>
-        </button>
+    <div>
+      <ProfileHeader
+        user={user}
+        action={
+          <Button variant="secondary" onClick={() => setEditando(true)}>
+            Editar perfil
+          </Button>
+        }
+      />
 
-        <div className="ml-4">
-          <h2 className="text-xl font-bold cursor-default">
-            {selectedUser.name}
-          </h2>
-          <p className="text-gray-500 text-sm cursor-default">
-            <span>{selectedUser.posts_count}</span> posts
-          </p>
-        </div>
-      </div>
-
-      <div>
-        <div className="h-40 bg-gray-300" />
-        <div className="flex items-end px-4 -mt-16">
-          <img
-            src={selectedUser.avatar_url}
-            alt={selectedUser.name}
-            className="w-32 h-32 object-cover rounded-full border-4 border-white"
-          />
-        </div>
-      </div>
-
-      <div className="mt-6 px-4 flex justify-between items-start">
-        <div>
-          <h2 className="text-xl font-bold cursor-default">
-            {selectedUser.name}
-          </h2>
-
-          <p className="text-gray-500 cursor-default">
-            @{selectedUser.username}
-          </p>
-
-          <p className="text-gray-500 mt-2 cursor-default">
-            Ingressou em{" "}
-            {selectedUser.joined_display
-              ? formatJoinedDate(selectedUser.joined_display)
-              : ""}
-          </p>
-
-          <div className="flex space-x-4 mt-2">
-            <span
-              className="cursor-pointer hover:underline"
-              onClick={() =>
-                navigate(`/follow/${selectedUser.username}/followers`, {
-                  state: { tab: "followers" },
-                })
-              }
-            >
-              <strong>{selectedUser.followers_count}</strong> Seguidores
-            </span>
-            <span
-              className="cursor-pointer hover:underline"
-              onClick={() =>
-                navigate(`/follow/${selectedUser.username}/following`, {
-                  state: { tab: "following" },
-                })
-              }
-            >
-              <strong>{selectedUser.following_count}</strong> Seguindo
-            </span>
-          </div>
-        </div>
-
-        <button
-          onClick={() => setShowEdit(true)}
-          className="px-4 py-2 border border-gray-300 rounded-full font-semibold hover:bg-gray-100 transition cursor-pointer"
-        >
-          Editar perfil
-        </button>
-      </div>
-
-      <div className="mt-4 border-b border-gray-200 flex text-gray-600 font-semibold">
-        <span className="p-3 px-6 hover:bg-gray-100 transition cursor-pointer">
-          Posts
-        </span>
-      </div>
-
-      <div>
-        {postsLoading ? (
-          <div className="flex justify-center py-10">
-            <Spinner size={35} color="border-t-blue-500" />
-          </div>
-        ) : userPosts.length === 0 ? (
-          <div className="text-gray-500 p-4">Ainda não há posts</div>
-        ) : (
-          <div className="flex flex-col">
-            {userPosts.map((post) => (
-              <Post
-                key={post.id}
-                post={post}
-                onCommentClick={() => setSelectedPostId(post.id)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {selectedPostId !== null && (
-        <CommentModal
-          postId={selectedPostId}
-          onClose={() => setSelectedPostId(null)}
+      <div className="mt-4 border-t border-gray-200">
+        <PostList
+          list={posts}
+          onLoadMore={carregarMaisPosts}
+          onCommentClick={setPostComentado}
+          emptyText="Você ainda não publicou nada"
         />
-      )}
+      </div>
 
-      {showEdit && <EditProfileModal onClose={() => setShowEdit(false)} />}
+      {editando && <EditProfileModal onClose={() => setEditando(false)} />}
+      {postComentado !== null && (
+        <CommentModal postId={postComentado} onClose={() => setPostComentado(null)} />
+      )}
     </div>
   );
 }
