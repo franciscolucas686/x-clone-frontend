@@ -1,7 +1,9 @@
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { User } from "@/shared/api/types";
+import { Avatar } from "@/ui/Avatar";
 import { Button } from "@/ui/Button";
+import { formatJoinedDate } from "@/utils/date";
 
 interface Props {
   user: User;
@@ -26,7 +28,10 @@ export function ProfileHeader({ user, action }: Props) {
           <ArrowLeft size={20} />
         </Button>
         <div>
-          <h2 className="text-xl font-bold">{user.name || user.username}</h2>
+          {/* Repete o nome que já é `<h1>` mais abaixo — é a barra fixa do topo, não um
+           * segundo título da página. Era `<h2>`, e por vir primeiro no DOM invertia a
+           * ordem dos headings: o `h2` aparecia antes do `h1` que ele deveria seguir. */}
+          <p className="text-xl font-bold">{user.name || user.username}</p>
           <p className="text-sm text-gray-500">{user.posts_count} posts</p>
         </div>
       </div>
@@ -34,10 +39,11 @@ export function ProfileHeader({ user, action }: Props) {
       <div className="h-32 bg-gray-300" />
 
       <div className="flex items-start justify-between px-4">
-        <img
+        <Avatar
           src={user.avatar_url}
-          alt={`Foto de ${user.name || user.username}`}
-          className="-mt-12 h-24 w-24 rounded-full border-4 border-white object-cover"
+          name={user.name || user.username}
+          size="xl"
+          className="-mt-12 border-4 border-white"
         />
         <div className="mt-3">{action}</div>
       </div>
@@ -45,7 +51,9 @@ export function ProfileHeader({ user, action }: Props) {
       <div className="px-4 pt-3">
         <h1 className="text-xl font-bold">{user.name || user.username}</h1>
         <p className="text-gray-500">@{user.username}</p>
-        <p className="mt-2 text-sm text-gray-500">Entrou em {user.joined_display}</p>
+        <p className="mt-2 text-sm text-gray-500">
+          Entrou em {formatJoinedDate(user.joined_display)}
+        </p>
 
         <div className="mt-3 flex gap-4 text-sm">
           <a href={`/follow/${user.username}/following`} className="hover:underline">

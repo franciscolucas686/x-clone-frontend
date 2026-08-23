@@ -1,7 +1,9 @@
 import { Heart, MessageCircle } from "lucide-react";
 import { toggleLike } from "@/features/posts/postThunks";
+import { Avatar } from "@/ui/Avatar";
 import type { Post as PostType } from "@/features/posts/types";
 import { useAppDispatch, useAppSelector } from "@/hooks/useAppSelector";
+import { formatRelativeDate } from "@/utils/date";
 import { Link } from "react-router-dom";
 
 type Props = {
@@ -23,24 +25,32 @@ export default function Post({ post, onCommentClick }: Props) {
     user?.username === post.user.username ? "/profile" : `/user/${post.user.username}`;
 
   return (
-    <div className="p-4 border-b border-gray-200 hover:bg-gray-50">
+    // `<article>`, não `<div>`: cada post é um item de conteúdo autocontido — e sem um
+    // `<h1>`/`<h2>` de página no Feed, um `<h3>` por post (como havia antes) formava um
+    // contorno de headings sem hierarquia nenhuma, só uma lista plana de "@fulano".
+    <article className="p-4 border-b border-gray-200 hover:bg-gray-50">
       <div className="flex items-start space-x-3">
-        <img
-          src={post.user.avatar_url}
-          alt={post.user.name ?? post.user.username}
-          className="w-12 h-12 rounded-full flex-shrink-0 object-cover"
-        />
-        <div className="flex-1">
+        <Avatar src={post.user.avatar_url} name={post.user.name || post.user.username} size="lg" />
+        <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between">
             <Link to={profileLink}>
-              <h3 className="font-bold cursor-pointer">@{post.user.username}</h3>
+              <span className="font-bold cursor-pointer hover:underline">
+                @{post.user.username}
+              </span>
             </Link>
-            <span className="text-xs text-gray-400">
-              {new Date(post.created_at).toLocaleString()}
-            </span>
+            <time
+              dateTime={post.created_at}
+              title={new Date(post.created_at).toLocaleString()}
+              className="text-xs text-gray-500"
+            >
+              {formatRelativeDate(post.created_at)}
+            </time>
           </div>
 
-          <p className="mt-1 whitespace-normal">{post.text}</p>
+          {/* `break-words`: sem ele, uma URL colada sem espaços não quebra e empurra a
+           * coluna inteira para o lado — o `overflow-x-hidden` do AppLayout escondia o
+           * estouro em vez de evitá-lo. */}
+          <p className="mt-1 whitespace-normal break-words">{post.text}</p>
 
           <div className="flex text-gray-500 text-sm gap-6 mt-3">
             <button
@@ -76,6 +86,6 @@ export default function Post({ post, onCommentClick }: Props) {
           </div>
         </div>
       </div>
-    </div>
+    </article>
   );
 }

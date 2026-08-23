@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { POST_MAX_LENGTH, validatePostText } from "@/features/posts/post.schema";
 import { createPost } from "@/features/posts/postThunks";
 import { useAppDispatch, useAppSelector } from "@/hooks/useAppSelector";
+import { Avatar } from "@/ui/Avatar";
 import { Button } from "@/ui/Button";
 import { Textarea } from "@/ui/Field";
 
@@ -21,15 +23,15 @@ export function PostComposer({ onPublished }: { onPublished?: () => void }) {
 
   const publicar = async (e: React.FormEvent) => {
     e.preventDefault();
-    const conteudo = texto.trim();
-    if (!conteudo) {
-      setErro("Escreva algo antes de publicar.");
+    const mensagem = validatePostText(texto, "Escreva algo antes de publicar.");
+    if (mensagem) {
+      setErro(mensagem);
       return;
     }
 
     setErro(null);
     try {
-      await dispatch(createPost({ text: conteudo })).unwrap();
+      await dispatch(createPost({ text: texto.trim() })).unwrap();
       setTexto("");
       onPublished?.();
     } catch (falha) {
@@ -42,25 +44,37 @@ export function PostComposer({ onPublished }: { onPublished?: () => void }) {
     <form onSubmit={publicar} className="border-b border-gray-200 p-4">
       <div className="flex items-start gap-3 pb-4">
         {usuario && (
-          <img
+          <Avatar
             src={usuario.avatar_url}
-            alt=""
-            className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
+            name={usuario.name || usuario.username}
+            size="lg"
+            decorative
           />
         )}
         <Textarea
           value={texto}
-          onChange={(e) => setTexto(e.target.value)}
+          onChange={(e) => {
+            setTexto(e.target.value);
+            // Sem isto, "Escreva algo antes de publicar." ficava na tela enquanto a
+            // pessoa já estava digitando a correção, só sumindo no próximo submit.
+            if (erro) setErro(null);
+          }}
           placeholder="O que está acontecendo?"
           rows={3}
-          maxLength={500}
           disabled={criando}
           aria-label="O que está acontecendo?"
         />
       </div>
 
       <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-400">{texto.length}/500</span>
+        {/* Sem `maxLength` no textarea: ele truncava um texto colado em silêncio, sem
+         * avisar que algo foi cortado. O limite agora é anunciado aqui e recusado no
+         * submit por `validatePostText`, nunca imposto por trás das costas. */}
+        <span
+          className={`text-xs ${texto.trim().length > POST_MAX_LENGTH ? "font-semibold text-red-500" : "text-gray-500"}`}
+        >
+          {texto.trim().length}/{POST_MAX_LENGTH}
+        </span>
         <Button type="submit" isLoading={criando} loadingText="Publicando...">
           Publicar
         </Button>
