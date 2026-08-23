@@ -30,7 +30,11 @@ interface FieldProps {
 export function Field({ label, error, hint, children }: FieldProps) {
   const id = useId();
   const idDoErro = error ? `${id}-erro` : undefined;
-  const idDaDica = hint ? `${id}-dica` : undefined;
+  // A dica só é renderizada quando não há erro (logo abaixo) — então o id dela só pode
+  // entrar em `describedBy` nesse mesmo caso. Sem a condição `!error`, um campo com dica
+  // e com erro apontava `aria-describedby` para um id que não existia na árvore: um
+  // leitor de tela ficava sem ler nada onde deveria ler o erro.
+  const idDaDica = hint && !error ? `${id}-dica` : undefined;
   const describedBy = [idDoErro, idDaDica].filter(Boolean).join(" ") || undefined;
 
   return (
@@ -53,8 +57,13 @@ export function Field({ label, error, hint, children }: FieldProps) {
   );
 }
 
+// O mesmo padrão de foco do ui/Button: `focus-visible:outline-none` + anel, em vez do
+// `focus:outline-none` sem substituto que só o botão tinha. `focus-visible` era o único
+// arquivo do design system com essa combinação — os campos ficavam sem indicação alguma
+// para quem navega pelo teclado além da borda azul, fácil de não notar.
 const CONTROLE =
-  "w-full p-2 border border-gray-300 rounded focus:border-blue-500 focus:outline-none " +
+  "w-full p-2 border border-gray-300 rounded focus:border-blue-500 " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 " +
   "aria-[invalid=true]:border-red-500";
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
