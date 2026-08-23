@@ -1,6 +1,6 @@
 import { Bell, Home, Mail, MoreHorizontal, Search, User } from "lucide-react";
 import { useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { fetchUserByUsername } from "@/features/users/userThunks";
 import { useAppDispatch, useAppSelector } from "@/hooks/useAppSelector";
 import useClickOutside from "@/hooks/useClickOutside";
@@ -58,22 +58,32 @@ export default function Sidebar() {
                 {showMoreMenu && <MoreMenu onClose={() => setShowMoreMenu(false)} />}
               </div>
             ) : label === "Perfil" ? (
-              <Link
+              <NavLink
                 key={label}
                 to={path}
                 onClick={handleProfileClick}
-                className="flex p-2 px-6 cursor-pointer rounded-full hover:bg-gray-200 items-center transition-colors duration-100 ease-in-out space-x-3 font-semibold "
+                // `aria-current="page"` sai sozinho do NavLink. Antes, nem a Sidebar nem
+                // a MobileNav indicavam a rota ativa — nem visual, nem programaticamente.
+                className={({ isActive }) =>
+                  `flex p-2 px-6 cursor-pointer rounded-full hover:bg-gray-200 items-center transition-colors duration-100 ease-in-out space-x-3 ${
+                    isActive ? "font-bold" : "font-semibold"
+                  }`
+                }
               >
                 <Icon size={30} className="mr-5" /> <span>{label}</span>
-              </Link>
+              </NavLink>
             ) : (
-              <Link
+              <NavLink
                 key={label}
                 to={path}
-                className="flex p-2 px-6 cursor-pointer rounded-full hover:bg-gray-200 items-center transition-colors duration-100 ease-in-out space-x-3 font-semibold "
+                className={({ isActive }) =>
+                  `flex p-2 px-6 cursor-pointer rounded-full hover:bg-gray-200 items-center transition-colors duration-100 ease-in-out space-x-3 ${
+                    isActive ? "font-bold" : "font-semibold"
+                  }`
+                }
               >
                 <Icon size={30} className="mr-5" /> <span>{label}</span>
-              </Link>
+              </NavLink>
             ),
           )}
         </nav>
