@@ -2,7 +2,13 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "@/app/store";
 import type { User } from "@/shared/api/types";
 import { fetchUserByUsername } from "@/features/users/userThunks";
-import { loginUser, registerUser, restoreUser, updateProfile } from "@/features/auth/authThunks";
+import {
+  loginUser,
+  logoutUser,
+  registerUser,
+  restoreUser,
+  updateProfile,
+} from "@/features/auth/authThunks";
 
 /**
  * Estado da sessão.
@@ -47,10 +53,20 @@ const authSlice = createSlice({
      * reage. Antes ele fazia `window.location.href = "/"` — um reload completo, que
      * descartava o store e engolia a mensagem que o próprio thunk acabara de gravar.
      *
-     * O corpo é vazio: o rootReducer em app/store.ts intercepta esta ação e zera todos
-     * os slices.
+     * O rootReducer em app/store.ts intercepta esta ação e zera todos os slices — mas
+     * repassa a ação adiante, então este reducer roda **depois** do reset e corrige o
+     * único campo que o reset deixa errado.
+     *
+     * O corpo já foi vazio, e isso era o bug: zerado, o slice volta ao initialState, cujo
+     * status é `checking`. Como `restoreUser` só é despachado no mount do AppRoutes,
+     * ninguém tirava o status de lá — e PrivateRoute/PublicRoute renderizam um Spinner
+     * `fixed inset-0` enquanto ele durar. O usuário saía da conta e ficava olhando um
+     * spinner até apertar F5. `checking` significa "ainda não sei se há sessão"; aqui já
+     * se sabe: não há.
      */
-    sessionExpired: () => {},
+    sessionExpired: (state) => {
+      state.status = "anonymous";
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -63,6 +79,15 @@ const authSlice = createSlice({
       })
       .addCase(restoreUser.rejected, (state) => {
         state.user = null;
+        state.status = "anonymous";
+      })
+      // Mesmo motivo do `sessionExpired` acima: sem este caso, sair da conta deixava o
+      // status em `checking` e travava o app no spinner de tela cheia.
+      //
+      // `logoutUser` não faz chamada de rede de propósito — não existe rota de logout em
+      // backend/urls.py, e o simplejwt só revoga refresh token na rotação. Se um dia
+      // existir, é lá que ela entra, não aqui.
+      .addCase(logoutUser.fulfilled, (state) => {
         state.status = "anonymous";
       });
 
@@ -79,7 +104,7 @@ const authSlice = createSlice({
         })
         .addCase(thunk.rejected, (state, action) => {
           state.submitting = false;
-          state.error = action.payload ?? "Não foi possível continuar.";
+          state.error = action.payload?.message ?? "Não foi possível continuar.";
         });
     }
 
@@ -94,7 +119,7 @@ const authSlice = createSlice({
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.submitting = false;
-        state.error = action.payload ?? "Não foi possível salvar o perfil.";
+        state.error = action.payload?.message ?? "Não foi possível salvar o perfil.";
       });
 
     builder.addCase(fetchUserByUsername.fulfilled, (state, action) => {

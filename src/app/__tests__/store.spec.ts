@@ -44,6 +44,11 @@ describe("reset de sessão no rootReducer", () => {
     expect(store.getState().posts.feed.items).toEqual([]);
     expect(store.getState().users.list.items).toEqual([]);
     expect(store.getState().auth.user).toBeNull();
+    // A asserção que faltava, e que deixou passar um app travado: zerar o slice o devolve
+    // ao initialState, cujo status é `checking` — e PrivateRoute/PublicRoute renderizam um
+    // Spinner de tela cheia enquanto ele durar. Sem esta linha, o teste passava com o
+    // usuário preso num spinner infinito depois de sair da conta.
+    expect(store.getState().auth.status).toBe("anonymous");
   });
 
   it("sessão expirada zera todos os slices", () => {
@@ -53,5 +58,6 @@ describe("reset de sessão no rootReducer", () => {
 
     expect(store.getState().posts.feed.items).toEqual([]);
     expect(store.getState().users.list.items).toEqual([]);
+    expect(store.getState().auth.status).toBe("anonymous");
   });
 });
