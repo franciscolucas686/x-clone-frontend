@@ -9,6 +9,11 @@ interface Props {
   onLoadMore: () => void;
   onCommentClick: (postId: number) => void;
   emptyText?: string;
+  /** Erro de uma ação sobre um post já carregado — publicar, curtir, comentar — e não
+   * da busca da lista em si (essa já tem `list.error`). Escrito em `postSlice.error` e,
+   * antes desta prop existir, lido por ninguém: uma curtida que falhava era
+   * completamente silenciosa. */
+  actionError?: string | null;
 }
 
 /**
@@ -23,20 +28,30 @@ export function PostList({
   onLoadMore,
   onCommentClick,
   emptyText = "Ainda não há posts",
+  actionError,
 }: Props) {
-  const vazio = !list.loading && list.items.length === 0;
+  // `!list.error` é o que faltava: sem ele, uma falha de rede renderizava a mensagem de
+  // erro **e** "nenhum post encontrado" ao mesmo tempo, porque as duas condições liam
+  // só `loading`/`items.length` e nenhuma olhava a outra.
+  const vazio = !list.loading && !list.error && list.items.length === 0;
 
   return (
     <div>
       {list.loading && list.items.length === 0 && (
         <div className="flex justify-center py-6">
-          <Spinner size={30} color="border-t-blue-500" />
+          <Spinner size={30} />
         </div>
       )}
 
       {list.error && (
         <p role="alert" className="py-4 text-center text-red-500">
           {list.error}
+        </p>
+      )}
+
+      {actionError && (
+        <p role="alert" className="py-4 text-center text-red-500">
+          {actionError}
         </p>
       )}
 
@@ -56,7 +71,7 @@ export function PostList({
 
       {list.loading && list.items.length > 0 && (
         <div className="flex justify-center py-6">
-          <Spinner size={25} color="border-t-blue-500" />
+          <Spinner size={25} />
         </div>
       )}
     </div>

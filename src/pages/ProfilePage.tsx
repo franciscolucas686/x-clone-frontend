@@ -11,15 +11,33 @@ import { Spinner } from "@/ui/Spinner";
 /** Perfil do usuário autenticado. */
 export default function ProfilePage() {
   const usuarioLogado = useAppSelector((s) => s.auth.user);
-  const { user, loading, posts, carregarMaisPosts } = useProfile(usuarioLogado?.username);
+  const actionError = useAppSelector((s) => s.posts.error);
+  const { user, loading, error, tentarDeNovo, posts, carregarMaisPosts } = useProfile(
+    usuarioLogado?.username,
+  );
 
   const [editando, setEditando] = useState(false);
   const [postComentado, setPostComentado] = useState<number | null>(null);
 
-  if (loading || !user) {
+  if (loading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
-        <Spinner size={40} color="border-t-blue-500" />
+        <Spinner size={40} />
+      </div>
+    );
+  }
+
+  // Mesmo defeito do PublicProfile: `!user` sozinho era lido como "ainda carregando" e
+  // uma falha na busca prendia a tela no spinner acima para sempre.
+  if (error || !user) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-center">
+        <p role="alert" className="text-gray-500">
+          {error ?? "Não foi possível carregar seu perfil."}
+        </p>
+        <Button variant="secondary" onClick={tentarDeNovo}>
+          Tentar de novo
+        </Button>
       </div>
     );
   }
@@ -41,6 +59,7 @@ export default function ProfilePage() {
           onLoadMore={carregarMaisPosts}
           onCommentClick={setPostComentado}
           emptyText="Você ainda não publicou nada"
+          actionError={actionError}
         />
       </div>
 

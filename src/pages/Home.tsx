@@ -37,7 +37,7 @@ export default function Home() {
         </div>
       </div>
 
-      <footer className="fixed bottom-0 left-0 w-full text-center text-gray-400 text-xs">
+      <footer className="fixed bottom-0 left-0 w-full text-center text-gray-500 text-xs">
         Todos direitos reservados © Francisco Lucas 2025
       </footer>
 

@@ -16,7 +16,7 @@ export function UserList({ list, onLoadMore, emptyText }: Props) {
     <div className="flex flex-col gap-3">
       {list.loading && list.items.length === 0 && (
         <div className="flex justify-center py-6">
-          <Spinner size={28} color="border-t-blue-500" />
+          <Spinner size={28} />
         </div>
       )}
 
@@ -26,9 +26,12 @@ export function UserList({ list, onLoadMore, emptyText }: Props) {
         </p>
       )}
 
-      {!list.loading && list.items.length === 0 && (
+      {!list.loading && !list.error && list.items.length === 0 && (
         // O ExplorerPage e o FollowListPage não tinham estado vazio: uma busca sem
         // resultado renderizava um contêiner em branco, indistinguível de erro.
+        //
+        // `!list.error` é o que faltava para as duas mensagens (erro e vazio) pararem
+        // de aparecer juntas quando a busca falhava.
         <p className="py-6 text-center text-gray-500">{emptyText}</p>
       )}
 
@@ -42,6 +45,15 @@ export function UserList({ list, onLoadMore, emptyText }: Props) {
         <Button variant="secondary" onClick={onLoadMore} className="self-center">
           Ver mais
         </Button>
+      )}
+
+      {/* PostList já tinha este segundo spinner para "carregando a próxima página"; esta
+       * lista só tinha o primeiro, e "Ver mais" simplesmente sumia sem indicar nada
+       * enquanto a próxima página vinha. */}
+      {list.loading && list.items.length > 0 && (
+        <div className="flex justify-center py-4">
+          <Spinner size={24} />
+        </div>
       )}
     </div>
   );

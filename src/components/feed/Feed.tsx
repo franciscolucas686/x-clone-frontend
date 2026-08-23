@@ -14,6 +14,7 @@ import { useAppDispatch, useAppSelector } from "@/hooks/useAppSelector";
 export default function Feed() {
   const dispatch = useAppDispatch();
   const feed = useAppSelector((s) => s.posts.feed);
+  const actionError = useAppSelector((s) => s.posts.error);
   const [postComentado, setPostComentado] = useState<number | null>(null);
 
   useEffect(() => {
@@ -27,6 +28,10 @@ export default function Feed() {
 
   return (
     <div>
+      {/* A tela principal do app não tinha `<h1>` nenhum. Oculto visualmente porque a
+       * hierarquia visual (o composer, a Sidebar) já comunica "isto é o feed" — o
+       * heading é para quem navega pela árvore de headings, não para quem enxerga. */}
+      <h1 className="sr-only">Página inicial</h1>
       <PostComposer />
 
       <PostList
@@ -34,6 +39,7 @@ export default function Feed() {
         onLoadMore={carregarMais}
         onCommentClick={setPostComentado}
         emptyText="Não há nenhum post"
+        actionError={actionError}
       />
 
       {postComentado !== null && (

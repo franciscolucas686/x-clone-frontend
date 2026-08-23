@@ -19,6 +19,10 @@ export interface UsersState {
   /** Perfil aberto no momento. */
   selectedUser: User | null;
   loadingSelectedUser: boolean;
+  /** `fetchUserByUsername.rejected` descartava `action.payload` — uma falha de rede
+   * virava `selectedUser: null` sem motivo nenhum guardado, e ProfilePage/PublicProfile
+   * tratavam `!user` como "ainda carregando", travando num spinner para sempre. */
+  selectedUserError: string | null;
   /** Listagem/busca de usuários. */
   list: PaginatedList<User>;
   followers: PaginatedList<User>;
@@ -36,6 +40,7 @@ export interface UsersState {
 const initialState: UsersState = {
   selectedUser: null,
   loadingSelectedUser: false,
+  selectedUserError: null,
   list: emptyList<User>(),
   followers: emptyList<User>(),
   following: emptyList<User>(),
@@ -68,20 +73,27 @@ const userSlice = createSlice({
         applyPage(state.list, action.payload.page, { reset: action.payload.reset });
       })
       .addCase(fetchUsers.rejected, (state, action) => {
+        // Uma requisição abortada (ExplorerPage cancela a anterior a cada tecla nova,
+        // via AbortController) não é uma falha de busca — é a busca certa que ainda vai
+        // chegar. Sem esta guarda, cada tecla digitada gravava um erro passageiro em
+        // `list.error`, que a lista chegou a mostrar por uma fração de segundo.
+        if (action.meta.aborted) return;
         failLoading(state.list, action.payload ?? "Erro ao buscar usuários.");
       });
 
     builder
       .addCase(fetchUserByUsername.pending, (state) => {
         state.loadingSelectedUser = true;
+        state.selectedUserError = null;
       })
       .addCase(fetchUserByUsername.fulfilled, (state, action) => {
         state.loadingSelectedUser = false;
         state.selectedUser = action.payload;
       })
-      .addCase(fetchUserByUsername.rejected, (state) => {
+      .addCase(fetchUserByUsername.rejected, (state, action) => {
         state.loadingSelectedUser = false;
         state.selectedUser = null;
+        state.selectedUserError = action.payload ?? "Não foi possível carregar o perfil.";
       });
 
     builder

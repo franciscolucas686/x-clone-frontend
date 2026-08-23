@@ -1,9 +1,13 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 import { makePost, makeUser, setCurrentUser, setMockPosts } from "@/mocks/handlers";
+import { server } from "@/mocks/server";
 import { renderWithProviders } from "@/test/render";
 import Feed from "@/components/feed/Feed";
+
+const API = "http://localhost:8000/api/v1";
 
 describe("Feed", () => {
   it("carrega e lista os posts de quem o usuário segue", async () => {
@@ -72,5 +76,30 @@ describe("Feed", () => {
 
     const descurtir = await screen.findByRole("button", { name: "Descurtir" });
     expect(within(descurtir).getByText("1")).toBeInTheDocument();
+  });
+
+  it("uma curtida que falha aparece na tela, em vez de ficar silenciosa", async () => {
+    // `postSlice.error` era escrito em `toggleLike.rejected` e lido por ninguém — uma
+    // falha de rede ao curtir não tinha efeito visível nenhum, só o contador que não
+    // mudava, indistinguível de um clique que não registrou.
+    const autor = makeUser({ id: 1, username: "ana" });
+    setMockPosts([makePost({ id: 1, user: autor, text: "post curtível" })]);
+    server.use(
+      http.post(`${API}/posts/:id/like/`, () =>
+        HttpResponse.json(
+          { code: "INTERNAL_ERROR", message: "", details: null, status_code: 500, path: "" },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    renderWithProviders(<Feed />);
+    await screen.findByText("post curtível");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Curtir" }));
+
+    expect(
+      await screen.findByText("Ocorreu um erro inesperado. Tente novamente em instantes."),
+    ).toBeInTheDocument();
   });
 });

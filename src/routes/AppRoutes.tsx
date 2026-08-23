@@ -22,7 +22,7 @@ const NotificationsPage = lazy(() => import("@/pages/NotificationsPage"));
 function Carregando() {
   return (
     <div className="flex h-[60vh] items-center justify-center">
-      <Spinner size={40} color="border-t-blue-500" />
+      <Spinner size={40} />
     </div>
   );
 }

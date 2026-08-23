@@ -21,10 +21,10 @@ export const fetchUsers = createAsyncThunk<
   Pagina,
   { search?: string; cursor?: string | null } | void,
   { rejectValue: string }
->("users/fetchUsers", async (arg, { rejectWithValue }) => {
+>("users/fetchUsers", async (arg, { rejectWithValue, signal }) => {
   const params = arg ?? {};
   try {
-    return { page: await userService.fetchUsers(params), reset: !params.cursor };
+    return { page: await userService.fetchUsers(params, signal), reset: !params.cursor };
   } catch (error) {
     return rejectWithValue(getErrorMessage(error));
   }

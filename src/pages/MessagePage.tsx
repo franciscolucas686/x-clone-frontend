@@ -8,16 +8,16 @@ export default function MessagePage() {
   return (
     <div>
       <div className="p-4">
-        <h2 className="text-xl font-bold cursor-default">Mensagens</h2>
+        <h1 className="text-xl font-bold cursor-default">Mensagens</h1>
       </div>
       <div className="flex items-center hover:bg-gray-100 cursor-pointer">
         <MessageCircle size={75} className="p-6" />
         <p className=" font-bold ">Bate-papo</p>
       </div>
       <div className="p-6 space-y-6">
-        <h3 className="text-5xl font-bold cursor-default">
+        <h2 className="text-5xl font-bold cursor-default">
           Receba as boas-vindas à sua caixa de entrada!
-        </h3>
+        </h2>
         <p className=" text-xl text-gray-500 cursor-default">
           Escreva, compartilhe posts e muito mais com conversas privadas entre voce e outras pessoas
           no X.

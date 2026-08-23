@@ -102,6 +102,7 @@ const postSlice = createSlice({
     builder
       .addCase(toggleLike.pending, (state, action) => {
         state.likingPostIds.push(action.meta.arg.postId);
+        state.error = null;
       })
       .addCase(toggleLike.fulfilled, (state, action) => {
         const doServidor = action.payload;

@@ -17,7 +17,7 @@ export default function PrivateRoute() {
   if (status === "checking") {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-white">
-        <Spinner size={50} color="border-t-blue-500" />
+        <Spinner size={50} />
       </div>
     );
   }

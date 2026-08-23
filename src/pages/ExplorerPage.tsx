@@ -13,27 +13,41 @@ export default function ExplorerPage() {
   useEffect(() => {
     // Debounce: sem ele, cada tecla dispara uma requisição — e o backend agora tem
     // limite por IP, então digitar rápido gastaria a cota à toa.
+    let promise: { abort: () => void } | undefined;
     const id = setTimeout(() => {
-      dispatch(fetchUsers({ search: termo }));
+      promise = dispatch(fetchUsers({ search: termo.trim() }));
     }, 300);
-    return () => clearTimeout(id);
+    // O cleanup do efeito roda a cada tecla nova (antes do próximo efeito) e no
+    // desmonte. `.abort()` cancela a busca anterior se ela já estiver em voo: sem isso,
+    // uma resposta lenta de "ab" podia chegar depois da de "abc" e sobrescrever a lista
+    // certa com um resultado já obsoleto — `fetchUsers` sempre reseta a lista inteira.
+    return () => {
+      clearTimeout(id);
+      promise?.abort();
+    };
   }, [termo, dispatch]);
 
   const carregarMais = () => {
-    if (!list.loading && list.next) dispatch(fetchUsers({ search: termo, cursor: list.next }));
+    if (!list.loading && list.next)
+      dispatch(fetchUsers({ search: termo.trim(), cursor: list.next }));
   };
 
   return (
     <div className="flex flex-col gap-4 p-4">
       <h1 className="text-xl font-bold">Explorar</h1>
 
-      <Input
-        type="search"
-        value={termo}
-        onChange={(e) => setTermo(e.target.value)}
-        placeholder="Buscar por nome ou @usuário"
-        aria-label="Buscar por nome ou usuário"
-      />
+      <form role="search" onSubmit={(e) => e.preventDefault()}>
+        <label htmlFor="busca-usuarios" className="sr-only">
+          Buscar por nome ou usuário
+        </label>
+        <Input
+          id="busca-usuarios"
+          type="search"
+          value={termo}
+          onChange={(e) => setTermo(e.target.value)}
+          placeholder="Buscar por nome ou @usuário"
+        />
+      </form>
 
       {/*
         A busca acontece no servidor (?search=). Antes o filtro era `users.filter(...)`

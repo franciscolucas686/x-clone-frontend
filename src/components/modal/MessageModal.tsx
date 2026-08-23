@@ -25,15 +25,20 @@ export default function MessageModal({ onClose }: MessageModalProps) {
         </div>
 
         <div className="relative">
+          <label htmlFor="buscar-pessoas" className="sr-only">
+            Buscar pessoas
+          </label>
           <input
+            id="buscar-pessoas"
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar pessoas"
-            className="w-full border border-gray-300 rounded-full py-2 pl-4 pr-10 focus:ring focus:ring-blue-200 outline-none"
+            className="w-full border border-gray-300 rounded-full py-2 pl-4 pr-10 focus:ring focus:ring-blue-200 focus-visible:outline-none"
           />
           <Search
             size={20}
+            aria-hidden="true"
             className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
           />
         </div>

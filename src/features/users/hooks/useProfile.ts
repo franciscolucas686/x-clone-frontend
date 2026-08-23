@@ -15,7 +15,7 @@ import { useAppDispatch, useAppSelector } from "@/hooks/useAppSelector";
  */
 export function useProfile(username: string | undefined) {
   const dispatch = useAppDispatch();
-  const { selectedUser, loadingSelectedUser } = useAppSelector((s) => s.users);
+  const { selectedUser, loadingSelectedUser, selectedUserError } = useAppSelector((s) => s.users);
   const posts = useAppSelector((s) => s.posts.userPosts);
 
   useEffect(() => {
@@ -33,11 +33,21 @@ export function useProfile(username: string | undefined) {
     dispatch(fetchUserPosts({ username, cursor: posts.next }));
   };
 
+  // Perfil de novo, sem tocar nos posts: é o que "tentar de novo" precisa depois de uma
+  // falha, sem duplicar a página de posts que talvez já tenha carregado.
+  const tentarDeNovo = () => {
+    if (username) dispatch(fetchUserByUsername(username));
+  };
+
   return {
     user: selectedUser,
     // Um estado de carregamento de verdade, alimentado pelos três casos do thunk. O que
     // havia era `setTimeout(() => setLocalLoading(false), 500)`.
     loading: loadingSelectedUser,
+    // Antes, uma falha de rede virava `selectedUser: null` sem mais nada: as telas
+    // liam `!user` como "ainda carregando" e ficavam presas no spinner para sempre.
+    error: selectedUserError,
+    tentarDeNovo,
     posts,
     carregarMaisPosts,
   };
