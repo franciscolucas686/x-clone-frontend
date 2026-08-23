@@ -1,10 +1,16 @@
 import api from "@/shared/api/api-client";
-import type { TokenResponse, User } from "@/shared/api/types";
+import type { RegisterResponse, TokenResponse, User } from "@/shared/api/types";
 
 /** Transporte de autenticação e perfil. */
 
 export function obtainToken(credentials: { username: string; password: string }) {
   return api.post<TokenResponse>("/token/", credentials).then((r) => r.data);
+}
+
+/** Troca um refresh token por um par novo. Usado pelo interceptor do api-client quando
+ * o access token expira — nunca chamado diretamente pelos thunks. */
+export function refreshToken(refresh: string) {
+  return api.post<TokenResponse>("/token/refresh/", { refresh }).then((r) => r.data);
 }
 
 export function register(payload: {
@@ -13,7 +19,7 @@ export function register(payload: {
   password: string;
   confirm_password: string;
 }) {
-  return api.post<User>("/register/", payload).then((r) => r.data);
+  return api.post<RegisterResponse>("/register/", payload).then((r) => r.data);
 }
 
 export function fetchProfile() {

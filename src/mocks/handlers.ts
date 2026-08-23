@@ -31,6 +31,7 @@ export function makeUser(overrides: Partial<User> = {}): User {
     following_count: 0,
     is_following: false,
     posts_count: 0,
+    has_custom_avatar: true,
     ...overrides,
   };
 }
@@ -111,7 +112,17 @@ export const handlers = [
       return erro("INVALID_CREDENTIALS", 401, "Usuário ou senha incorretos.");
     }
     currentUser = found;
-    return HttpResponse.json({ access: "token-de-teste", refresh: "" });
+    return HttpResponse.json({ access: "token-de-teste", refresh: "refresh-de-teste" });
+  }),
+
+  // Exercitado pelo interceptor do api-client quando um 401 chega fora das rotas de
+  // credencial: renova o par e a requisição original é refeita com o token novo.
+  http.post(`${API}/token/refresh/`, async ({ request }) => {
+    const body = (await request.json()) as { refresh: string };
+    if (body.refresh !== "refresh-valido-de-teste") {
+      return erro("TOKEN_NOT_VALID", 401, "Sua sessão expirou. Entre novamente.");
+    }
+    return HttpResponse.json({ access: "token-renovado-de-teste", refresh: "refresh-de-teste" });
   }),
 
   http.post(`${API}/register/`, async ({ request }) => {
@@ -124,7 +135,10 @@ export const handlers = [
     const created = makeUser({ id: users.length + 1, username: body.username, name: body.name });
     users = [...users, created];
     currentUser = created;
-    return HttpResponse.json(created, { status: 201 });
+    return HttpResponse.json(
+      { ...created, tokens: { access: "token-de-teste", refresh: "refresh-de-teste" } },
+      { status: 201 },
+    );
   }),
 
   http.get(`${API}/profile/`, () =>

@@ -51,6 +51,9 @@ export interface User extends FeedUser {
   following_count: number;
   is_following: boolean;
   posts_count: number;
+  /** `true` quando a pessoa já escolheu uma foto — nunca deduzido comparando URL contra
+   * um avatar padrão, porque essa comparação exigia o cliente conhecer a URL padrão. */
+  has_custom_avatar: boolean;
 }
 
 /** Post como vem numa listagem — `PostSerializer`. */
@@ -81,8 +84,15 @@ export interface FollowToggleResponse {
   followers_count: number;
 }
 
-/** Resposta de POST /token/. */
+/** Resposta de POST /token/ e de POST /token/refresh/. */
 export interface TokenResponse {
   access: string;
   refresh: string;
+}
+
+/** Resposta de POST /register/. */
+export interface RegisterResponse extends User {
+  /** Par de tokens do usuário recém-criado. Evita a segunda ida a /token/ que o cadastro
+   * fazia — e o segundo hash de senha que ela custava. */
+  tokens: TokenResponse;
 }
