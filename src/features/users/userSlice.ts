@@ -14,6 +14,7 @@ import {
   fetchUsers,
   toggleFollow,
 } from "@/features/users/userThunks";
+import { updateProfile } from "@/features/auth/authThunks";
 
 export interface UsersState {
   /** Perfil aberto no momento. */
@@ -135,6 +136,19 @@ const userSlice = createSlice({
         // lido por nenhum componente: uma falha ao seguir era completamente invisível.
         state.list.error = action.payload ?? "Erro ao seguir o usuário.";
       });
+
+    // Mesmo acoplamento intencional do authSlice com fetchUserByUsername, na direção
+    // oposta: quando o próprio usuário troca avatar/nome/username em "Editar perfil",
+    // essa mudança precisa alcançar qualquer cópia dele já carregada aqui — perfil
+    // visitado, listas de seguidores/seguindo e busca — sem esperar um novo fetch.
+    builder.addCase(updateProfile.fulfilled, (state, action) => {
+      const u = action.payload;
+      emCadaLista(state, u.id, (user) => {
+        user.avatar_url = u.avatar_url;
+        user.name = u.name;
+        user.username = u.username;
+      });
+    });
   },
 });
 

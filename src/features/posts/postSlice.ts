@@ -6,7 +6,7 @@ import {
   startLoading,
   type PaginatedList,
 } from "@/shared/paginated-list";
-import type { Post, PostComment } from "@/shared/api/types";
+import type { FeedUser, Post, PostComment } from "@/shared/api/types";
 import {
   createComment,
   createPost,
@@ -15,6 +15,7 @@ import {
   fetchUserPosts,
   toggleLike,
 } from "@/features/posts/postThunks";
+import { updateProfile } from "@/features/auth/authThunks";
 
 export interface PostState {
   /** Feed de quem o usuário segue. */
@@ -147,6 +148,27 @@ const postSlice = createSlice({
       .addCase(createComment.rejected, (state, action) => {
         state.error = action.payload ?? "Erro ao enviar o comentário.";
       });
+
+    // `post.user`/`comment.user` são cópias (FeedUser) tiradas no momento do fetch, não
+    // uma referência ao usuário da sessão — por isso `emCadaLista` acima (que casa por
+    // postId) não serve aqui. Quando o próprio autor troca a foto em "Editar perfil",
+    // isto alcança todo post/comentário dele já carregado no feed, na timeline do
+    // perfil e nos comentários abertos, sem esperar um novo fetch.
+    builder.addCase(updateProfile.fulfilled, (state, action) => {
+      const u = action.payload;
+      const aplicar = (autor: FeedUser) => {
+        if (autor.id !== u.id) return;
+        autor.avatar_url = u.avatar_url;
+        autor.name = u.name;
+        autor.username = u.username;
+      };
+      for (const lista of [state.feed, state.userPosts]) {
+        for (const post of lista.items) aplicar(post.user);
+      }
+      for (const comentarios of Object.values(state.comments)) {
+        for (const comentario of comentarios.items) aplicar(comentario.user);
+      }
+    });
   },
 });
 
