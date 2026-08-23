@@ -1,15 +1,17 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { loginSchema, type LoginFormValues } from "@/features/auth/auth.schema";
-import { clearError } from "@/features/auth/authSlice";
 import { loginUser } from "@/features/auth/authThunks";
+import { clearError } from "@/features/auth/authSlice";
+import { useClearAuthErrorOnMount } from "@/features/auth/hooks/useClearAuthErrorOnMount";
 import { useAppDispatch, useAppSelector } from "@/hooks/useAppSelector";
 import { Xlogo } from "@/components/icons/Xlogo";
 import { Button } from "@/ui/Button";
 import { Field, Input } from "@/ui/Field";
+import { FormError } from "@/ui/FormError";
 import { Modal } from "@/ui/Modal";
+import { applyServerFieldErrors } from "@/shared/api/form-errors";
 
 export default function LoginModal({ onClose }: { onClose: () => void }) {
   const dispatch = useAppDispatch();
@@ -19,21 +21,26 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { username: "", password: "" },
   });
 
-  useEffect(() => {
-    dispatch(clearError());
-  }, [dispatch]);
+  useClearAuthErrorOnMount();
 
   const entrar = handleSubmit(async (dados) => {
     const resultado = await dispatch(loginUser(dados));
     if (loginUser.fulfilled.match(resultado)) {
       onClose();
       navigate("/feed");
+    } else if (loginUser.rejected.match(resultado)) {
+      // Quando o erro tem campo, ele já acende o Field certo — o banner com a mesma
+      // frase embaixo do formulário seria a mesma informação duas vezes na tela.
+      if (applyServerFieldErrors(resultado.payload?.details, setError)) {
+        dispatch(clearError());
+      }
     }
   });
 
@@ -44,7 +51,18 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
 
       <form onSubmit={entrar} className="flex flex-col gap-5" noValidate>
         <Field label="Nome de usuário" error={errors.username?.message}>
-          {(props) => <Input {...props} {...register("username")} autoComplete="username" />}
+          {(props) => (
+            <Input
+              {...props}
+              {...register("username")}
+              autoComplete="username"
+              // Sem isto, o iOS capitaliza a primeira letra do username sozinho — um
+              // login que a pessoa digitou certo falha porque o teclado alterou o texto.
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+          )}
         </Field>
 
         <Field label="Senha" error={errors.password?.message}>
@@ -59,11 +77,7 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
         </Field>
 
         {/* Erro do servidor, já traduzido pelo code em shared/api/error-code-map.ts. */}
-        {error && (
-          <p role="alert" className="text-center text-sm text-red-500">
-            {error}
-          </p>
-        )}
+        {error && <FormError>{error}</FormError>}
 
         <Button type="submit" isLoading={submitting} loadingText="Entrando...">
           Login

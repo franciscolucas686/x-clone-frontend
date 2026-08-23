@@ -35,4 +35,12 @@ export const ERROR_CODE_MESSAGES: Record<string, string> = {
 
   VALIDATION_ERROR: "Confira os campos destacados e tente novamente.",
   INTERNAL_ERROR: "Ocorreu um erro inesperado. Tente novamente em instantes.",
+
+  // DOMAIN_ERROR é o code da classe base em common/errors.py: qualquer DomainError nova
+  // que esqueça de sobrescrever `code` cai aqui em vez do passthrough. NETWORK_ERROR
+  // nunca vem do servidor — é sintetizado pelo próprio api-client.ts quando a requisição
+  // não teve resposta — mas faltava aqui, e sua mensagem vivia duplicada dentro do
+  // api-client em vez de ao lado das outras.
+  DOMAIN_ERROR: "Não foi possível concluir a operação.",
+  NETWORK_ERROR: "Não foi possível falar com o servidor. Verifique sua conexão.",
 };

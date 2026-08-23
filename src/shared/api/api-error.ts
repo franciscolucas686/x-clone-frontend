@@ -36,3 +36,22 @@ export function getErrorMessage(err: unknown): string {
 export function getFieldErrors(err: unknown): Record<string, string[]> {
   return isApiError(err) && err.details ? err.details : {};
 }
+
+/**
+ * Forma que os thunks de autenticação rejeitam com — mensagem pronta para o banner e
+ * `details` cru para o formulário destacar o campo certo.
+ *
+ * Antes `rejectWithValue(getErrorMessage(error))` reduzia o erro a uma `string`: o
+ * `code` e o `details` que o backend manda de propósito — `USERNAME_ALREADY_EXISTS` e os
+ * validadores de senha preenchem `details` explicitamente — eram descartados na fronteira
+ * do thunk. `VALIDATION_ERROR` virava sempre a mensagem genérica "Confira os campos
+ * destacados", com nenhum campo de fato destacado.
+ */
+export interface AuthRejection {
+  message: string;
+  details: Record<string, string[]>;
+}
+
+export function toRejectValue(err: unknown): AuthRejection {
+  return { message: getErrorMessage(err), details: getFieldErrors(err) };
+}
