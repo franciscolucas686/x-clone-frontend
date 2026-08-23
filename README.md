@@ -1,24 +1,49 @@
 # x-clone — frontend
 
-Interface de uma rede social, no estilo do X. React 19 + TypeScript + Redux Toolkit +
-Tailwind 4, com Vite.
+Interface de uma rede social no estilo do X (Twitter). **React 19 + TypeScript + Redux
+Toolkit + Tailwind 4**, com Vite. Cadastro/login, feed, publicar, curtir, comentar,
+seguir, perfil próprio e público, busca de usuários e edição de perfil com foto — tudo
+consumindo uma API própria em Django.
 
-Consome a API de
-[`x-clone-backend`](https://github.com/franciscolucas686/x-clone-backend).
+Repositório irmão: consome a API de
+[`x-clone-backend`](https://github.com/franciscolucas686/x-clone-backend) (Django +
+DRF + PostgreSQL).
+
+**Stack:** React 19 · TypeScript · Vite 7 · Redux Toolkit · React Router 7 · Tailwind
+CSS 4 · react-hook-form + Zod · axios · Vitest + Testing Library + MSW
 
 ---
 
-## Começando
+## O que funciona de verdade
 
-Requisitos: Node 22 (há um `.nvmrc`) e o backend rodando em `localhost:8000`.
+Cadastro, login, feed, publicar, curtir, comentar, seguir, perfil próprio e público,
+listas de seguidores/seguindo, busca de usuários, edição de perfil com foto — e a foto
+nova aparece na hora em toda a interface, sem precisar recarregar a página.
+
+**São maquetes estáticas**, sem backend por trás: a página de Mensagens e o modal de
+nova mensagem, a página de Notificações, o painel de planos (`PremiumPanel`) e os
+assuntos do momento na barra lateral. Estão aqui porque completam o visual do clone;
+nenhuma delas finge ter dados reais.
+
+---
+
+## Como rodar localmente (a partir do `git clone`)
+
+Pré-requisitos: **Node 22** (há um `.nvmrc`) e o
+[`x-clone-backend`](https://github.com/franciscolucas686/x-clone-backend) rodando em
+`localhost:8000` — suba-o primeiro seguindo o README de lá.
 
 ```bash
+git clone https://github.com/franciscolucas686/x-clone-frontend.git
+cd x-clone-frontend
+
 cp .env.example .env   # o valor já aponta para o backend local
 npm install
 npm run dev
 ```
 
-O app sobe em `http://localhost:5173`.
+O app sobe em `http://localhost:5173`. Cadastre um usuário pela própria tela — não há
+conta fixa: o backend, em produção, zera o banco a cada deploy (ver README dele).
 
 ---
 
@@ -88,13 +113,20 @@ Listas paginadas usam `shared/paginated-list.ts`: uma forma só (`items`, `next`
 `loading`, `error`) e um `applyPage` que deduplica por id, em vez da mesma quíntupla
 repetida em cada slice com nomes diferentes.
 
+Não há cache normalizado único (sem React Query, sem entidades globais): cada slice
+guarda a própria cópia dos dados que precisa. Onde isso importa — o avatar do usuário
+logado, por exemplo, aparece em `auth`, `users` e `posts` ao mesmo tempo — as slices
+reagem umas às outras (`userSlice.ts` e `postSlice.ts` escutam `updateProfile.fulfilled`
+de `authThunks`) em vez de cada tela lembrar de sincronizar sozinha.
+
 ---
 
 ## Erros
 
-Toda falha de rede chega como o envelope da API, com um `code` estável.
-`shared/api/error-code-map.ts` mapeia código → texto em português, e `getErrorMessage`
-resolve nesta ordem: código conhecido → mensagem do servidor → texto genérico.
+Toda falha de rede chega como o envelope da API, com um `code` estável, **já em
+português** (backend e frontend). `shared/api/error-code-map.ts` mapeia código → texto,
+e `getErrorMessage` resolve nesta ordem: código conhecido → mensagem do servidor → texto
+genérico.
 
 O cliente **nunca lê a frase do servidor para decidir o que mostrar**. A versão anterior
 procurava substrings em inglês (`"too short"`, `"already exists"`) dentro do texto gerado
@@ -110,7 +142,9 @@ O `api-client` também não navega: um 401 fora das rotas de credencial dispara
 Zod + `react-hook-form`. Os schemas ficam em `features/<dominio>/*.schema.ts` e
 **espelham as regras que o backend já aplica**, citando o arquivo de origem — não são
 regras inventadas no cliente. Quando as regras do backend mudarem, o schema muda no mesmo
-commit.
+commit. A capitalização do campo "nome" (maiúscula por palavra, exceto conectivos como
+"de"/"da"/"dos") é normalizada só no backend — o frontend mostra o valor que voltou na
+resposta, sem duplicar a regra.
 
 ---
 
@@ -148,17 +182,4 @@ API exige **rebuild**, não restart.
 
 `vercel.json` fixa o rewrite que devolve `index.html` para qualquer caminho que não seja
 um arquivo de build. Sem ele, abrir `/feed` direto ou dar F5 nessa rota devolveria 404 —
-o caminho existe só dentro do JavaScript. Ver `VERCEL.md` para o detalhe.
-
----
-
-## Escopo
-
-Funcionam de verdade: cadastro, login, feed, publicar, curtir, comentar, seguir, perfil
-próprio e público, listas de seguidores/seguindo, busca de usuários, edição de perfil com
-foto.
-
-**São maquetes estáticas**, sem backend por trás: a página de Mensagens e o modal de nova
-mensagem, a página de Notificações, o painel de planos (`PremiumPanel`) e os assuntos do
-momento na barra lateral. Estão aqui porque completam o visual do clone; nenhuma delas
-finge ter dados reais.
+o caminho existe só dentro do JavaScript. Ver [`VERCEL.md`](./VERCEL.md) para o detalhe.
